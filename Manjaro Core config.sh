@@ -7,7 +7,7 @@ echo "----------------------------------------------"
 sleep 4
 sudo pacman-mirrors --country Germany
 sudo pacman -Sy
-sudo pacman -Rs midori parole
+sudo pacman -Rs midori parole --noconfirm
 sudo pacman -S timeshift timeshift-autosnap 
 clear
 
@@ -21,17 +21,26 @@ echo "System upgrade"
 sleep 3 
 sudo pacman -Syyu
 clear
+echo "Fonts"
+sudo pacman -S ttf-dejavu ttf-droid  ttf-liberation ttf-ubuntu-font-family
+clear
 echo "Firefox"
 sudo pacman -S firefox firefox-i18n-de firefox-adblock-plus
 clear
 echo "Multimedia"
 sudo pacman -S --needed vlc strawberry lame flac libsoxr manjaro-gstreamer gstreamer-vaapi gst-plugins-espeak
 clear
+
 echo "Nützliche Programme & System tools"
-sudo pacman -S fakeroot gcc make neofetch yay gsmartcontrol gnome-text-editor ocl-icd lib32-libldap vkd3d lib32-vkd3d vulkan-tools ntp gufw ufw-extras nss gnome-disk-utility file-roller libreoffice-fresh-de libreoffice-fresh  shotwell udftools xfsdump f2fs-tools mtools transmission-gtk libva mono ttf-dejavu ttf-liberation ttf-ubuntu-font-family yt-dlp
+sudo pacman -S fakeroot base-devel jre-openjdk-headless neofetch yay gsmartcontrol gnome-text-editor ocl-icd lib32-libldap vkd3d lib32-vkd3d vulkan-tools ntp gufw ufw-extras nss gnome-disk-utility file-roller libreoffice-fresh-de libreoffice-fresh shotwell udftools xfsdump f2fs-tools mtools transmission-gtk libva mono yt-dlp
 
 sudo systemctl enable ufw.service 
 echo "neofetch" >> ~/.bashrc
+clear
+
+echo "ZSH"
+sudo pacman -S zsh zsh-autosuggestions zsh-syntax-highlighting zsh-completions
+chsh -s /usr/bin/zsh
 
 clear
 echo "Installation von AUR Paketen"
@@ -64,12 +73,13 @@ clear
 
 echo "Windows Support"
 sleep 3
-sudo pacman -S --needed faudio openal lib32-openal libgdiplus wine-staging 
+sudo pacman -S --needed faudio openal lib32-openal libgdiplus wine-staging wine-gecko wine-mvulkan-icd-loader lib32-vulkan-icd-loader 
 clear
 
 echo "Steam Gaming Plattform installation"
 sleep 3
-yay -S --needed steam protontricks steam-tweaks
+yay -S --needed steam protontricks steam-tweaks libxcomposite lib32-libxcomposite libxinerama lib32-libgcrypt libgcrypt lib32-libxinerama ncurses lib32-ncurses opencl-icd-loader lib32-opencl-icd-loader libxslt lib32-libxslt libva lib32-libva gtk3 lib32-gtk3 gst-plugins-base-libs lib32-gst-plugins-base-libs 
+	
 echo "hrtf = true" >> ~/.alsoftrc
 
 echo "IPTV"
