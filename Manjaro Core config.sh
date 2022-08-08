@@ -2,22 +2,14 @@
 
 echo "----------------------------------------------"
 echo "..Manjaro-Minimal XFCE4 config after install.."
-echo "   with Dracut, Timeshift & Paru Aur Helper   "
+echo "   with Dracut, Timeshift & yay Aur Helper   "
 echo "----------------------------------------------"
 sleep 4
 
 sudo pacman-mirrors --country Germany
 sudo pacman -Sy
-sudo pacman -Rs midori parole gparted pamac-gtk libpamac-flatpak-plugin manjaro-application-utility manjaro-hello --noconfirm
+sudo pacman -Rs midori mousepad parole gparted 
 sudo pacman -S dkms timeshift timeshift-autosnap 
-clear
-
-echo "Install Paru AUR Helper"
-sudo pacman -S --needed base-devel
-git clone https://aur.archlinux.org/paru.git
-cd paru
-makepkg -si
-cd
 clear
 
 echo "Pipewire statt pulseaudio"
@@ -58,19 +50,19 @@ clear
 
 echo "ZSH"
 sleep 2
-sudo paru -S zsh zsh-autosuggestions zsh-syntax-highlighting zsh-completions zsh-fish
+yay -S zsh zsh-autosuggestions zsh-syntax-highlighting zsh-completions zsh-fish
 chsh -s /usr/bin/zsh
 
 clear
 echo "Installation von AUR Paketen"
 sleep 3
-paru -S grub-hook nohang-git auto-cpufreq ttf-ms-fonts mcmojave-circle-icon-theme  systemd-zram 
+yay -S grub-hook nohang-git auto-cpufreq ttf-ms-fonts mcmojave-circle-icon-theme  systemd-zram 
 sudo systemctl condrestart systemd-zram  
 clear
 
 echo "Linux Mint Icons & Themes"
 sleep 2
-paru -S mint-themes mint-x-icons mint-backgrounds-vanessa
+yay -S mint-themes mint-x-icons mint-backgrounds-vanessa
 clear
 
 echo "Flatpak"
@@ -83,7 +75,7 @@ clear
 
 echo "Drucker Support"
 sleep 3
-sudo pacman -S --needed cups cups-filters ghostscript gutenprint system-config-printer
+sudo pacman -S --needed cups cups-filters gutenprint system-config-printer
 sudo systemctl enable --now cups.service
 sudo systemctl enable --now cups.socket
 sudo systemctl enable --now cups.path
@@ -103,17 +95,17 @@ clear
 
 echo "Steam Gaming Plattform installation"
 sleep 3
-paru -S --needed steam protontricks steam-tweaks libxcomposite lib32-libxcomposite libxinerama lib32-libgcrypt libgcrypt lib32-libxinerama ncurses lib32-ncurses opencl-icd-loader lib32-opencl-icd-loader libxslt lib32-libxslt libva lib32-libva gtk3 lib32-gtk3 gst-plugins-base-libs lib32-gst-plugins-base-libs 
+yay -S --needed steam protontricks steam-tweaks libxcomposite lib32-libxcomposite libxinerama lib32-libgcrypt libgcrypt lib32-libxinerama ncurses lib32-ncurses opencl-icd-loader lib32-opencl-icd-loader libxslt lib32-libxslt libva lib32-libva gtk3 lib32-gtk3 gst-plugins-base-libs lib32-gst-plugins-base-libs 
 	
 echo "hrtf = true" >> ~/.alsoftrc
 
 echo "IPTV"
 sleep 2
-paru -S hypnotix
+yay -S hypnotix
 
 echo "Bluray wiedergabe"
 sleep 2
-paru -S aacskeys makemkv-libaacs libbluray
+yay -S aacskeys makemkv-libaacs libbluray
 
 echo "SSD optimieren"
 sleep 2
@@ -122,17 +114,16 @@ sudo systemctl enable fstrim.timer
 
 echo "swap optimieren"
 echo "vm.swappiness=10" >> /etc/sysctl.d/100-manjaro.conf
-echo ""
+
+clear
 echo "System Bereinigung.."
-echo 
-sleep 3
-paru -c
+sleep 2
+yay -c
 sudo paccache -r
 sudo fstrim -av
 clear
 history -c
 echo ""
-
 echo "..Sytem erfolgreich eingerichtet.. Neustart in 10 sekunden!"
 sleep 10
 reboot
