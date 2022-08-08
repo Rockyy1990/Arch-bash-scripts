@@ -31,7 +31,7 @@ sudo systemctl enable ufw.service
 
 echo "Windows Support"
 sleep 3
-sudo pacman -S faudio openal lib32-openal libgdiplus wine-staging wine-mono wine-gecko wine-mvulkan-icd-loader lib32-vulkan-icd-loader 
+sudo pacman -S faudio openal lib32-openal wine-staging wine-mono wine-gecko vulkan-icd-loader lib32-vulkan-icd-loader 
 clear
 
 echo "Drucker Support"
@@ -49,17 +49,12 @@ sudo systemctl enable --now avahi-daemon.service
 
 clear
 
-echo "Windows Support"
-sleep 3
-sudo pacman -S faudio lib32-openal wine-staging wine-gecko wine-mono vulkan-icd-loader lib32-vulkan-icd-loader 
-clear
-
 echo "Fonts"
-sudo pacman -S ttf-liberation ttf-ubuntu-font-family ttf-opensans gnu-free-fonts
+sudo pacman -S ttf-ubuntu-font-family ttf-opensans gnu-free-fonts
 clear
 
 echo "Multimedia"
-sudo pacman -S strawberry soundconverter audacity libsoxr manjaro-gstreamer gstreamer-vaapi gst-plugins-espeak
+sudo pacman -S strawberry soundconverter audacity manjaro-gstreamer gstreamer-vaapi gst-plugins-espeak
 clear
 
 echo "Installation von AUR Paketen"
