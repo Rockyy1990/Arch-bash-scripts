@@ -8,8 +8,8 @@ sleep 4
 
 sudo pacman-mirrors --country Germany
 sudo pacman -Sy
-sudo pacman -Rs mousepad parole gparted audacious hexchat pidgin gimp onlyoffice-desktopeditors
-sudo pacman -S yay dkms booster 
+sudo pacman -Rs mousepad gparted audacious hexchat pidgin gimp onlyoffice-desktopeditors
+sudo pacman -S yay dkms
 clear
 
 echo "Pipewire statt pulseaudio"
@@ -51,7 +51,7 @@ clear
 
 echo "Windows Support"
 sleep 3
-sudo pacman -S faudio openal lib32-openal libgdiplus wine-staging wine-gecko wine-mvulkan-icd-loader lib32-vulkan-icd-loader 
+sudo pacman -S faudio lib32-openal wine-staging wine-gecko wine-mono vulkan-icd-loader lib32-vulkan-icd-loader 
 clear
 
 echo "Fonts"
