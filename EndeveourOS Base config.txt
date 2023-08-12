@@ -37,4 +37,4 @@ clear
 echo "System erfolgreich eingerichtet"
 echo "Neustart in 10 sekunden"
 sleep 10
-reboot
+sudo reboot
