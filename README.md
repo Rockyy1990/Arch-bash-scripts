@@ -3,4 +3,5 @@
 ArchLinux, 
 Manjaro,
 Endeveour OS,
+CachyOS,
 ALCI config (Arch Linux Calamares Installer),
