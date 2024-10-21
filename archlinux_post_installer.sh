@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Last edit: 20.10.2024 
+# Last edit: 21.10.2024 
 
 echo ""
 read -p "Its recommend to install the chaotic aur repo for some packges.
@@ -73,6 +73,10 @@ install_needed-packages() {
     # Fonts
     sudo pacman -S --needed --noconfirm ttf-dejavu ttf-freefont ttf-liberation ttf-droid terminus-font
     sudo pacman -S --needed --noconfirm noto-fonts noto-fonts-emoji ttf-ubuntu-font-family ttf-roboto ttf-roboto-mono
+    
+    #Themes
+    sudo pacman -S --needed --noconfirm mint-l-icons mint-y-icons mint-l-theme
+    sudo pacman -S --needed --noconfirm mcmojave-circle-icon-theme-git
 
     sudo systemctl enable --now cpupower.service
     sudo cpupower frequency-set -g performance
@@ -182,7 +186,7 @@ install_pipewire-full() {
     if pacman -Qs "^$PACKAGE" > /dev/null; then
     echo "$PACKAGE is already installed."
     else
-    read -p "$PACKAGE is not installed. blueman (Gui for bluetooth) install now? (ja/nein): " antwort
+    read -p "$PACKAGE is not installed. Blueman (Gui for bluetooth) install now? (ja/nein): " antwort
 
     case $antwort in
         [Jj]|[Jj][Aa])
@@ -199,29 +203,7 @@ install_pipewire-full() {
      esac
     fi
 
-  # Name des Pakets, das überprüft werden soll
-   PACKAGE="easyeffects"
-
-  # Überprüfen, ob das Paket installiert ist
-  if pacman -Qs "^$PACKAGE" > /dev/null; then
-    echo "$PACKAGE is already installed."
-  else
-    read -p "$PACKAGE not installed. Easyeffects install now? (ja/nein): " antwort
-
-    case $antwort in
-        [Jj]|[Jj][Aa])
-            # Paket installieren
-            sudo pacman -S --noconfirm "$PACKAGE"
-            echo "$PACKAGE is already installed."
-            ;;
-        [Nn]|[Nn][Ee])
-            echo "Install of $PACKAGE cancelled."
-            ;;
-        *)
-            echo "Wrong input. Write 'ja' oder 'nein'."
-            ;;
-     esac
-  fi  
+  
 
     echo "pipewire installed successfully!"
     read -p "Press [Enter] to continue..."
@@ -230,13 +212,13 @@ install_pipewire-full() {
 
 
 # Function to install a package
- install_amd-gpu-driver() {
+install_amd-gpu-driver() {
     echo "Installing amd-gpu-driver..."
     sudo pacman -S --needed --noconfirm xf86-video-amdgpu mesa lib32-mesa  mesa-vdpau lib32-mesa-vdpau libva-mesa-driver lib32-libva-mesa-driver
     sudo pacman -S --needed --noconfirm adriconf opencl-icd-loader ocl-icd lib32-ocl-icd rocm-opencl-runtime
     
     # Install Vulkan drivers
-    sudo pacman -S --needed --noconfirm vulkan-radeon  lib32-vulkan-radeon amdvlk lib32-amdvlk vulkan-swrast vulkan-icd-loader lib32-vulkan-icd-loader
+    sudo pacman -S --needed --noconfirm vulkan-radeon lib32-vulkan-radeon vulkan-swrast vulkan-icd-loader lib32-vulkan-icd-loader
     sudo pacman -S --needed --noconfirm vulkan-validation-layers vulkan-mesa-layers vulkan-headers
     echo "amd-gpu-driver installed successfully!"
     read -p "Press [Enter] to continue..."
@@ -265,8 +247,8 @@ install_printer-support() {
 
 # Function to install a package
 install_flatpak-support() {
-    echo "Installing flatpak..."
-    sudo pacman -S --needed --noconfirm flatpak 
+   echo "Installing flatpak..."
+   sudo pacman -S --needed --noconfirm flatpak 
    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
    flatpak update
    echo "flatpak installed successfully!"
@@ -464,6 +446,8 @@ fi
 
     sudo grub-mkconfig -o /boot/grub/grub.cfg
     
+    sudo timeshift --create
+    
     echo "The final steps are done! Please reboot archlinux now"
     read -p "Press [Enter] to continue..."
 }
@@ -500,7 +484,7 @@ install_arch_to_cachyos_converter() {
 # Main script loop
 while true; do
     display_menu
-    read -p "Select an option [0-16]: " option
+    read -p "Select an option [0-17]: " option
 
     case $option in
         1) install_chaotic-aur ;;
