@@ -2,6 +2,12 @@
 
 # Last edit: 20.10.2024 
 
+echo ""
+read -p "Its recommend to install the chaotic aur repo for some packges.
+                  Press any key to continue."
+echo ""
+
+
 # Function to display the menu
 display_menu() {
     clear
@@ -58,17 +64,21 @@ install_chaotic-aur() {
 # Function to install a package
 install_needed-packages() {
     echo "Installing Needed-packages..."
-    sudo pacman -S --needed --noconfirm dbus-broker dkms pacman-contrib bash-completion timeshift timeshift-autosnap 
-    sudo pacman -S --needed --noconfirm  lrzip zstd unrar unzip unace nss fuse2 fuseiso samba
-    sudo pacman -S --needed --noconfirm ttf-dejavu ttf-opensans freetype2  ttf-liberation ubuntu-font-family ttf-ms-fonts
+    sudo pacman -S --needed --noconfirm dbus-broker dkms pacman-contrib bash-completion ntp rsync timeshift timeshift-autosnap 
+    sudo pacman -S --needed --noconfirm  lrzip zstd unrar unzip unace nss fuse2 fuseiso samba bind
     sudo pacman -S --needed --noconfirm xorg-xkill xorg-xinput xorg-xrandr libwnck3 libxcomposite lib32-libxcomposite libxinerama lib32-libxrandr lib32-libxfixes
     sudo pacman -S --needed --noconfirm hdparm sdparm gvfs gvfs-smb gvfs-nfs mtools xfsdump f2fs-tools udftools hwdetect sof-firmware fwupd cpupower mintstick
     sudo pacman -S --needed --noconfirm xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-user-dirs
     
+    # Fonts
+    sudo pacman -S --needed --noconfirm ttf-dejavu ttf-freefont ttf-liberation ttf-droid terminus-font
+    sudo pacman -S --needed --noconfirm noto-fonts noto-fonts-emoji ttf-ubuntu-font-family ttf-roboto ttf-roboto-mono
+
     sudo systemctl enable --now cpupower.service
     sudo cpupower frequency-set -g performance
     sudo systemctl enable --now dbus-broker.service
-   
+    sudo timedatectl set-ntp true
+    
 
     echo "Needed packages installed successfully!"
     read -p "Press [Enter] to continue..."
@@ -226,7 +236,7 @@ install_pipewire-full() {
     sudo pacman -S --needed --noconfirm adriconf opencl-icd-loader ocl-icd lib32-ocl-icd rocm-opencl-runtime
     
     # Install Vulkan drivers
-    sudo pacman -S --needed --noconfirm vulkan-radeon lib32-vulkan-radeon vulkan-swrast vulkan-icd-loader lib32-vulkan-icd-loader
+    sudo pacman -S --needed --noconfirm vulkan-radeon  lib32-vulkan-radeon amdvlk lib32-amdvlk vulkan-swrast vulkan-icd-loader lib32-vulkan-icd-loader
     sudo pacman -S --needed --noconfirm vulkan-validation-layers vulkan-mesa-layers vulkan-headers
     echo "amd-gpu-driver installed successfully!"
     read -p "Press [Enter] to continue..."
@@ -336,15 +346,7 @@ else
     esac
 fi
     
-    # Enable Steam Play (Proton) for all titles
-    echo "Enable Steam Play for all titles"
-    echo "Please restart Steam after running this script"
-    sed -i 's/\"enabled\".false/\"enabled\".true/' ~/.steam/root/config/config.vdf
 
-    # Increase the processor count
-    export PROTON_USE_WINED3D=1
-    export PROTON_NO_ESYNC=1
-    
     
     echo "steam installed successfully!"
     read -p "Press [Enter] to continue..."
