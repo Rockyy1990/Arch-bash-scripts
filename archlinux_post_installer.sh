@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Last edit: 21.10.2024 
+# Last edit: 22.10.2024 
 
 echo ""
 read -p "Its recommend to install the chaotic aur repo for some packges.
@@ -11,10 +11,10 @@ echo ""
 # Function to display the menu
 display_menu() {
     clear
-    echo "------------------------------------------------------"
-    echo "      Archlinux Post-Installer               "
-    echo "----------------------------------------------------- "
-    echo "1)  Install Chaotic-AUR"
+    echo "------------------------------------------"
+    echo "      Archlinux Post-Installer            "
+    echo "------------------------------------------"
+    echo "1)  Install Chaotic-Repo (Compiled AUR)"
     echo "2)  Install Needed-packages"
     echo "3)  Install bashrc-tweaks"
     echo "4)  Install Make-tools"
@@ -30,9 +30,16 @@ display_menu() {
     echo "14) Install Chromium Browser"
     echo "15) Install Firefox Browser"
     echo "16) Final steps "
+    echo "-----------------------------------------"
     echo "17) Archlinux to CachyOS Converter"
+    echo "18) Install and config nfs (server)"
+    echo "19) Install and config nfs (client)"
+    echo "20) Install and config samba (share)"
+    echo "21) Install virt-manager (Virtualisation)"
+    echo "22) Install Libreoffice (fresh)"
+    echo "23) Install Ventoy (USB Multiboot)"
     echo "0) EXIT"
-    echo "--------------------------------------"
+    echo "-----------------------------------------"
 }
 
 
@@ -78,6 +85,7 @@ install_needed-packages() {
     sudo pacman -S --needed --noconfirm mint-l-icons mint-y-icons mint-l-theme
     sudo pacman -S --needed --noconfirm mcmojave-circle-icon-theme-git
 
+    
     sudo systemctl enable --now cpupower.service
     sudo cpupower frequency-set -g performance
     sudo systemctl enable --now dbus-broker.service
@@ -304,7 +312,7 @@ install_steam-gaming-platform() {
     sudo pacman -S --needed --noconfirm lib32-sdl2 lib32-alsa-lib lib32-giflib lib32-gnutls lib32-libglvnd lib32-libldap      
     sudo pacman -S --needed --noconfirm lib32-libxinerama lib32-libxcursor lib32-gnutls lib32-libva lib32-libvdpau libvdpau
     
-    # Name des Pakets, das überprüft werden soll
+# Name des Pakets, das überprüft werden soll
 PACKAGE="protonup-qt"
 
 # Überprüfen, ob das Paket installiert ist
@@ -395,10 +403,10 @@ install_chromium_browser() {
 # Function to install a package
 install_firefox_browser() {
     
-    echo "Starting install chromium browser..."
+    echo "Starting install firefox browser..."
    sudo pacman -S --needed --noconfirm firefox firefox-i18n-de
  
-    echo "firefox  installed successfully!"
+    echo "firefox installed successfully!"
     read -p "Press [Enter] to continue..."
 
 }
@@ -455,11 +463,11 @@ fi
 # Function to install a package
 install_arch_to_cachyos_converter() {
     
-    echo "Starting CachyOS installer...."
+   echo "Starting CachyOS installer...."
   
-  curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
+   curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
 
-  tar xvf cachyos-repo.tar.xz && cd cachyos-repo
+   tar xvf cachyos-repo.tar.xz && cd cachyos-repo
 
    sudo ./cachyos-repo.sh
 
@@ -481,10 +489,236 @@ install_arch_to_cachyos_converter() {
 
 }
 
+# Function to install a package
+install_nfs_server() {
+    
+    echo "Starting install  nfs (server)..."
+  
+
+# Exit on error
+set -e
+
+# Function to display usage
+usage() {
+    echo "Usage: $0 [-h | --help] [-p <path_to_export>]"
+    echo "Options:"
+    echo "  -h, --help        Show this help message"
+    echo "  -p, --path        Path to export. This is required."
+}
+
+# Parse command line arguments
+EXPORT_PATH=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -p|--path)
+            shift
+            EXPORT_PATH="$1"
+            shift
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+# Check if the export path is provided
+if [ -z "$EXPORT_PATH" ]; then
+    echo "Error: Export path is required."
+    usage
+    exit 1
+fi
+
+# Ensure the export path exists
+if [ ! -d "$EXPORT_PATH" ]; then
+    echo "Error: Export path '$EXPORT_PATH' does not exist."
+    exit 1
+fi
+
+# Update system and install NFS packages
+echo "Updating system and installing NFS packages..."
+sudo pacman -Syu --noconfirm nfs-utils
+
+# Enable and start the NFS server
+echo "Enabling and starting NFS server..."
+sudo systemctl enable nfs-server
+sudo systemctl start nfs-server
+
+# Set the NFS exports
+echo "Configuring NFS exports..."
+echo "$EXPORT_PATH *(rw,sync,no_subtree_check)" | sudo tee -a /etc/exports
+
+# Restart NFS services to apply changes
+echo "Restarting NFS services..."
+sudo exportfs -a
+sudo systemctl restart nfs-server
+
+# Show the export list
+echo "NFS server setup complete. Current exports:"
+sudo exportfs -v
+
+echo "Don't forget to configure your firewall to allow NFS traffic!"
+echo "sudo ufw allow from <client_ip> to any port nfs"
+ 
+    echo "nfs-server installed successfully!"
+    read -p "Press [Enter] to continue..."
+
+}
+
+# Function to install a package
+install_nfs_client() {
+read -p "You need to set the mount_point and other parameters first in this script before execute!"
+    
+    echo "Starting installing a nfs client..."
+   
+# Exit immediately if any command fails
+set -e
+
+# Update the package database
+echo "Updating package database..."
+sudo pacman -Syu --noconfirm
+
+# Install the required packages for NFS client
+echo "Installing NFS client package..."
+sudo pacman -S --needed --noconfirm nfs-utils
+
+# Enable and start the necessary services
+echo "Starting and enabling the nfs-client.target..."
+sudo systemctl enable --now nfs-client.target
+
+# Create a mount point for the NFS share
+read -p "Enter the directory where you want to mount the NFS share (e.g., /mnt/nfs): " mount_point
+sudo mkdir -p "$mount_point"
+
+# Get the NFS server IP address and export path from the user
+read -p "Enter the NFS server IP address: " nfs_server
+read -p "Enter the export path on the NFS server (e.g., /exported/path): " export_path
+
+# Mount the NFS share
+echo "Mounting NFS share..."
+sudo mount "$nfs_server:$export_path" "$mount_point"
+
+# Add the NFS mount to /etc/fstab for persistent mounting on boot
+echo "Adding to /etc/fstab for automatic mounting on boot..."
+echo "$nfs_server:$export_path $mount_point nfs rw,sync,no_subtree_check,no_root_squash 0 0" | sudo tee -a /etc/fstab
+
+echo "NFS client installation and configuration completed successfully."
+echo "You can now access the NFS share at $mount_point."
+ 
+    echo "nfs (client) installed successfully!"
+    read -p "Press [Enter] to continue..."
+
+}
+
+# Function to install a package
+install_samba() {
+    
+    echo "Starting install and config samba (share)..."
+   
+set -e
+
+# Update the system
+echo "Updating the system..."
+sudo pacman -Syu --noconfirm
+
+# Install Samba
+echo "Installing Samba..."
+sudo pacman -S --needed --noconfirm samba
+
+# Create a directory to share
+SHARE_DIR="/srv/samba/share"
+sudo mkdir -p "$SHARE_DIR"
+sudo chmod 777 "$SHARE_DIR"  # Change permissions as needed; this allows full access.
+
+# Backup the original Samba configuration file
+echo "Backing up original Samba configuration..."
+sudo cp /etc/samba/smb.conf /etc/samba/smb.conf.backup
+
+# Configure Samba
+echo "Configuring Samba..."
+cat <<EOF | sudo tee /etc/samba/smb.conf
+[global]
+    workgroup = WORKGROUP
+    server string = Samba Server %v
+    netbios name = archlinux
+    security = user
+    map to guest = bad user
+    dns proxy = no
+
+[Share]
+    path = $SHARE_DIR
+    valid users = guest
+    read only = no
+    browsable = yes
+    public = yes
+    writable = yes
+EOF
+
+# Add a Samba user (This example uses 'nobody' as a guest user)
+echo "Adding Samba user..."
+sudo smbpasswd -a nobody
+
+# Start and enable Samba services
+echo "Starting and enabling Samba services..."
+sudo systemctl start smb.service
+sudo systemctl enable smb.service
+sudo systemctl start nmb.service
+sudo systemctl enable nmb.service
+
+echo "Samba installation and configuration complete!"
+echo "You can access the share at: //your-server-ip/Share"
+
+# Optionally, allow Samba through the firewall if using iptables or ufw.
+# Make sure to customize according to your firewall configuration.
+
+ 
+    echo "samba installed successfully!"
+    read -p "Press [Enter] to continue..."
+
+}
+
+# Function to install a package
+install_virt-manager() {
+   echo "Installing virt-manager..."
+   sudo pacman -Sy
+   sudo pacman -S --needed --noconfirm virt-manager qemu libvirt dnsmasq bridge-utils
+   sudo systemctl enable libvirtd.service
+   sudo systemctl start libvirtd.service
+   sudo virsh net-autostart default
+   sudo virsh net-start default
+   sudo usermod -aG libvirt $(whoami)
+   echo "virt-manager installed successfully!"
+   read -p "Press [Enter] to continue..."
+}
+
+# Function to install a package
+install_libreoffice() {
+   echo "Installing libreoffice..."
+   sudo pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de
+   echo "libreoffice installed successfully!"
+   read -p "Press [Enter] to continue..."
+}
+
+
+# Function to install a package
+install_ventoy() {
+    
+    echo "Starting install ventoy..."
+   sudo pacman -S --needed --noconfirm ventoy-bin
+ 
+    echo "ventoy installed successfully!"
+    read -p "Press [Enter] to continue..."
+
+}
+
 # Main script loop
 while true; do
     display_menu
-    read -p "Select an option [0-17]: " option
+    read -p "Select an option [0-22]: " option
 
     case $option in
         1) install_chaotic-aur ;;
@@ -504,6 +738,12 @@ while true; do
        15) install_firefox_browser ;;
        16) install_final-steps ;;
        17) install_arch_to_cachyos_converter ;;
+       18) install_nfs_server ;;  
+       19) install_nfs_client ;;  
+       20) install_samba ;;
+       21) install_virt-manager ;; 
+       22) install_libreoffice ;;  
+       23) install_ventoy ;;  
          0) echo "Exiting..."; exit 0 ;;
         *) echo "Invalid option! Please try again." ;;
     esac
