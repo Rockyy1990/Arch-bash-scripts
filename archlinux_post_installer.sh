@@ -1,21 +1,24 @@
 #!/bin/bash
 
-# Last edit: 22.10.2024 
+# Last edit: 26.10.2024 
 
 echo ""
+echo "          You should read this script first!!
+"
+echo ""
 read -p "Its recommend to install the chaotic aur repo for some packges.
-                  Press any key to continue."
+                   Press any key to continue."
 echo ""
 
 
 # Function to display the menu
 display_menu() {
     clear
-    echo "------------------------------------------"
-    echo "      Archlinux Post-Installer            "
-    echo "------------------------------------------"
+    echo "---------------------------------------------"
+    echo "      Archlinux Post-Installer               "
+    echo "---------------------------------------------"
     echo "1)  Install Chaotic-Repo (Compiled AUR)"
-    echo "2)  Install Needed-packages"
+    echo "2)  Install Needed-packages and system tweaks"
     echo "3)  Install bashrc-tweaks"
     echo "4)  Install Make-tools"
     echo "5)  Install Programs"
@@ -30,7 +33,7 @@ display_menu() {
     echo "14) Install Chromium Browser"
     echo "15) Install Firefox Browser"
     echo "16) Final steps "
-    echo "-----------------------------------------"
+    echo "-------------------------------------------"
     echo "17) Archlinux to CachyOS Converter"
     echo "18) Install and config nfs (server)"
     echo "19) Install and config nfs (client)"
@@ -39,12 +42,25 @@ display_menu() {
     echo "22) Install Libreoffice (fresh)"
     echo "23) Install Ventoy (USB Multiboot)"
     echo "0) EXIT"
-    echo "-----------------------------------------"
+    echo "------------------------------------------ "
 }
 
 
 # Function to install a package
 install_chaotic-aur() {
+    
+    # Config the pacman.conf
+    
+    # Colorful progress bar
+    grep -q "^Color" /etc/pacman.conf || sudo sed -i -e "s/^#Color$/Color/" /etc/pacman.conf
+    grep -q "ILoveCandy" /etc/pacman.conf || sudo sed -i -e "/#VerbosePkgLists/a ILoveCandy" /etc/pacman.conf
+    sudo sed -i -e s"/\#VerbosePkgLists/VerbosePkgLists/"g /etc/pacman.conf
+
+    sudo sed -i -e s"/\#ParallelDownloads.*/ParallelDownloads = 2/"g /etc/pacman.conf
+    
+    # Disable pacman cache.
+    sudo sed -i -e s"/\#CacheDir.*/CacheDir = /"g /etc/pacman.conf
+    
     echo "Installing chaotic-aur..."
     sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
     sudo pacman-key --lsign-key 3056513887B78AEB
@@ -71,17 +87,21 @@ install_chaotic-aur() {
 # Function to install a package
 install_needed-packages() {
     echo "Installing Needed-packages..."
+    
     sudo pacman -S --needed --noconfirm dbus-broker dkms pacman-contrib bash-completion ntp rsync timeshift timeshift-autosnap 
-    sudo pacman -S --needed --noconfirm  lrzip zstd unrar unzip unace nss fuse2 fuseiso samba bind
+    sudo pacman -S --needed --noconfirm lrzip zstd unrar unzip unace nss fuse2 fuseiso samba bind
     sudo pacman -S --needed --noconfirm xorg-xkill xorg-xinput xorg-xrandr libwnck3 libxcomposite lib32-libxcomposite libxinerama lib32-libxrandr lib32-libxfixes
     sudo pacman -S --needed --noconfirm hdparm sdparm gvfs gvfs-smb gvfs-nfs mtools xfsdump f2fs-tools udftools hwdetect sof-firmware fwupd cpupower mintstick
     sudo pacman -S --needed --noconfirm xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-user-dirs
+    
+    #System tweaks
+    sudo pacman -S --needed --noconfirm irqbalance memavaild nohang ananicy-cpp
     
     # Fonts
     sudo pacman -S --needed --noconfirm ttf-dejavu ttf-freefont ttf-liberation ttf-droid terminus-font
     sudo pacman -S --needed --noconfirm noto-fonts noto-fonts-emoji ttf-ubuntu-font-family ttf-roboto ttf-roboto-mono
     
-    #Themes
+    # Themes
     sudo pacman -S --needed --noconfirm mint-l-icons mint-y-icons mint-l-theme
     sudo pacman -S --needed --noconfirm mcmojave-circle-icon-theme-git
 
@@ -91,7 +111,194 @@ install_needed-packages() {
     sudo systemctl enable --now dbus-broker.service
     sudo timedatectl set-ntp true
     
+    #sudo systemctl disable systemd-oomd
+    sudo systemctl enable irqbalance
+    sudo systemctl enable memavaild
+    sudo systemctl enable nohang
+    sudo systemctl enable ananicy-cpp
 
+    # Makepkg config
+    echo -e "Set arch"
+    sudo sed -i -e "s/-march=x86-64 -mtune=generic -O2/-march=native -mtune=native -O3 -pipe -fgraphite-identity -floop-strip-mine -floop-nest-optimize -fno-semantic-interposition -fipa-pta -flto -fdevirtualize-at-ltrans -flto-partition=one/g" /etc/makepkg.conf
+    echo -e "Set BUILDENV"
+    sudo sed -i -e "s|BUILDENV.*|BUILDENV=(!distcc color ccache check !sign)|g" /etc/makepkg.conf
+    echo -e "Set BUILDDIR"
+    sudo sed -i -e "s|#BUILDDIR.*|BUILDDIR=/tmp/makepkg|g" /etc/makepkg.conf
+    echo -e "Use all cores for compilation"
+    sudo sed -i -e "s/-j.*/-j$(expr $(nproc) - 1) -l$(nproc)\"/;s/^#MAKEFLAGS/MAKEFLAGS/;s/^#RUSTFLAGS/RUSTFLAGS/" /etc/makepkg.conf
+    echo -e "Use all cores for compression"
+    sudo sed -i -e "s/xz.*/xz -c -z -q - --threads=$(nproc))/;s/^#COMPRESSXZ/COMPRESSXZ/;s/zstd.*/zstd -c -z -q - --threads=$(nproc))/;s/^#COMPRESSZST/COMPRESSZST/;s/lz4.*/lz4 -q --best)/;s/^#COMPRESSLZ4/COMPRESSLZ4/" /etc/makepkg.conf
+    echo -e "Use different compression algorithm"
+    sudo sed -i -e "s/PKGEXT.*/PKGEXT='.pkg.tar.lz4'/g" /etc/makepkg.conf
+    echo -e "Set OPTIONS"
+    sudo sed -i -e "s|OPTIONS=(.*|OPTIONS=(strip !docs !libtool !staticlibs emptydirs zipman purge !debug lto)|g" /etc/makepkg.conf
+
+    # Optimize sysctl
+    sudo sed -i -e '/^\/\/swappiness/d' /etc/sysctl.conf
+    echo -e "vm.swappiness = 1
+    vm.vfs_cache_pressure = 50
+    vm.overcommit_memory = 1
+    vm.overcommit_ratio = 50
+    vm.dirty_background_ratio = 5
+    vm.dirty_ratio = 10
+    vm.stat_interval = 60
+    vm.page-cluster = 0
+    vm.dirty_expire_centisecs = 500
+    vm.oom_dump_tasks = 1
+    vm.oom_kill_allocating_task = 1
+    vm.extfrag_threshold = 500
+    vm.block_dump = 0
+    vm.reap_mem_on_sigkill = 1
+    vm.panic_on_oom = 0
+    vm.zone_reclaim_mode = 0
+    vm.scan_unevictable_pages = 0
+    vm.compact_unevictable_allowed = 1
+    vm.compaction_proactiveness = 0
+    vm.page_lock_unfairness = 1
+    vm.percpu_pagelist_high_fraction = 0
+    vm.pagecache = 1
+    vm.watermark_scale_factor = 1
+    vm.memory_failure_recovery = 0
+    vm.max_map_count = 262144
+    min_perf_pct = 100
+    kernel.io_delay_type = 3
+    kernel.task_delayacct = 0
+    kernel.sysrq = 0
+    kernel.watchdog_thresh = 10
+    kernel.nmi_watchdog = 0
+    kernel.seccomp = 0
+    kernel.timer_migration = 0
+    kernel.core_pipe_limit = 0
+    kernel.core_uses_pid = 1
+    kernel.hung_task_timeout_secs = 0
+    kernel.sched_rr_timeslice_ms = -1
+    kernel.sched_rt_runtime_us = -1
+    kernel.sched_rt_period_us = 1
+    kernel.sched_child_runs_first = 1
+    kernel.sched_tunable_scaling = 1
+    kernel.sched_schedstats = 0
+    kernel.sched_energy_aware = 0
+    kernel.sched_autogroup_enabled = 0
+    kernel.sched_compat_yield = 0
+    kernel.sched_min_task_util_for_colocation = 0
+    kernel.sched_nr_migrate = 4
+    kernel.sched_migration_cost_ns = 100000
+    kernel.sched_latency_ns = 100000
+    kernel.sched_min_granularity_ns = 100000
+    kernel.sched_wakeup_granularity_ns = 1000
+    kernel.sched_scaling_enable = 1
+    kernel.sched_itmt_enabled = 1
+    kernel.numa_balancing = 1
+    kernel.panic = 0
+    kernel.panic_on_oops = 0
+    kernel.perf_cpu_time_max_percent = 1
+    kernel.printk_devkmsg = off
+    kernel.compat-log = 0
+    kernel.yama.ptrace_scope = 1
+    kernel.stack_tracer_enabled = 0
+    kernel.random.urandom_min_reseed_secs = 120
+    kernel.perf_event_paranoid = -1
+    kernel.perf_event_max_contexts_per_stack = 2
+    kernel.perf_event_max_sample_rate = 1
+    kernel.kptr_restrict = 0
+    kernel.randomize_va_space = 0
+    kernel.exec-shield = 0
+    kernel.kexec_load_disabled = 1
+    kernel.acpi_video_flags = 0
+    kernel.unknown_nmi_panic = 0
+    kernel.panic_on_unrecovered_nmi = 0
+    dev.i915.perf_stream_paranoid = 0
+    dev.scsi.logging_level = 0
+    debug.exception-trace = 0
+    debug.kprobes-optimization = 1
+    fs.inotify.max_user_watches = 1048576
+    fs.inotify.max_user_instances = 1048576
+    fs.inotify.max_queued_events = 1048576
+    fs.quota.allocated_dquots = 0
+    fs.quota.cache_hits = 0
+    fs.quota.drops = 0
+    fs.quota.free_dquots = 0
+    fs.quota.lookups = 0
+    fs.quota.reads = 0
+    fs.quota.syncs = 0
+    fs.quota.warnings = 0
+    fs.quota.writes = 0
+    fs.leases-enable = 1
+    fs.lease-break-time = 5
+    fs.dir-notify-enable = 0 
+    force_latency = 1
+    net.ipv4.tcp_frto=1
+    net.ipv4.tcp_frto_response=2
+    net.ipv4.tcp_low_latency=1
+    net.ipv4.tcp_slow_start_after_idle=0
+    net.ipv4.tcp_window_scaling=1
+    net.ipv4.tcp_keepalive_time=300
+    net.ipv4.tcp_keepalive_probes=5
+    net.ipv4.tcp_keepalive_intvl=15
+    net.ipv4.tcp_ecn=1
+    net.ipv4.tcp_fastopen=3
+    net.ipv4.tcp_early_retrans=2
+    net.ipv4.tcp_thin_dupack=1
+    net.ipv4.tcp_autocorking=0
+    net.ipv4.tcp_reordering=3
+    net.ipv4.tcp_timestamps=0
+    net.core.bpf_jit_enable=1
+    net.core.bpf_jit_harden=0
+    net.core.bpf_jit_kallsyms=0" | sudo tee /etc/sysctl.d/99-swappiness.conf
+    echo -e "Drop caches"
+    sudo sysctl -w vm.compact_memory=1 && sudo sysctl -w vm.drop_caches=3 && sudo sysctl -w vm.drop_caches=2
+    echo -e "Restart swap"
+    sudo swapoff -av && sudo swapon -av
+    
+    
+    echo -e "Enable write cache"
+    echo -e "write back" | sudo tee /sys/block/*/queue/write_cache
+    sudo tune2fs -o journal_data_writeback $(df / | grep / | awk '{print $1}')
+    sudo tune2fs -O ^has_journal $(df / | grep / | awk '{print $1}')
+    sudo tune2fs -o journal_data_writeback $(df /home | grep /home | awk '{print $1}')
+    sudo tune2fs -O ^has_journal $(df /home | grep /home | awk '{print $1}')
+    echo -e "Enable fast commit"
+    sudo tune2fs -O fast_commit $(df / | grep / | awk '{print $1}')
+    sudo tune2fs -O fast_commit $(df /home | grep /home | awk '{print $1}')
+
+    echo -e "Improve I/O throughput"
+    echo 32 | sudo tee /sys/block/sd*[!0-9]/queue/iosched/fifo_batch
+    echo 32 | sudo tee /sys/block/mmcblk*/queue/iosched/fifo_batch
+    echo 32 | sudo tee /sys/block/nvme[0-9]*/queue/iosched/fifo_batch
+    
+    
+    echo -e "Enable compose cache on disk"
+    sudo mkdir -p /var/cache/libx11/compose
+    mkdir -p /home/$USER/.compose-cache
+    touch /home/$USER/.XCompose
+
+    ## Improve NVME
+    if $(find /sys/block/nvme[0-9]* | grep -q nvme); then
+    echo -e "options nvme_core default_ps_max_latency_us=0" | sudo tee /etc/modprobe.d/nvme.conf
+    fi
+
+    ## Improve PCI latency
+    sudo setpci -v -d *:* latency_timer=48 >/dev/null 2>&1
+    
+    echo -e "Disable logging services"
+    sudo systemctl mask dev-mqueue.mount >/dev/null 2>&1
+    sudo systemctl mask sys-kernel-tracing.mount >/dev/null 2>&1
+    sudo systemctl mask sys-kernel-debug.mount >/dev/null 2>&1
+    sudo systemctl mask sys-kernel-config.mount >/dev/null 2>&1
+    sudo systemctl mask systemd-update-utmp.service >/dev/null 2>&1
+    sudo systemctl mask systemd-update-utmp-runlevel.service >/dev/null 2>&1   
+    sudo systemctl mask systemd-update-utmp-shutdown.service >/dev/null 2>&1
+    sudo systemctl mask systemd-journal-flush.service >/dev/null 2>&1
+    sudo systemctl mask systemd-journal-catalog-update.service >/dev/null 2>&1
+    sudo systemctl mask systemd-journald-dev-log.socket >/dev/null 2>&1
+    sudo systemctl mask systemd-journald-audit.socket >/dev/null 2>&1
+    sudo systemctl mask logrotate.service >/dev/null 2>&1
+    sudo systemctl mask logrotate.timer >/dev/null 2>&1
+    sudo systemctl mask syslog.service >/dev/null 2>&1
+    sudo systemctl mask syslog.socket >/dev/null 2>&1
+    sudo systemctl mask rsyslog.service >/dev/null 2>&1
+
+    
     echo "Needed packages installed successfully!"
     read -p "Press [Enter] to continue..."
 }
@@ -178,14 +385,42 @@ fi
 # Function to install a package
 install_pipewire-full() {
     echo "Installing pipewire..."
-    sudo pacman -S --needed --noconfirm pipewire pipewire-alsa pipewire-pulse pipewire-zeroconf pipewire-v4l2 gst-plugin-pipewire wireplumber pavucontrol alsa-firmware
+    sudo pacman -S --needed --noconfirm pipewire pipewire-alsa pipewire-pulse pipewire-zeroconf pipewire-v4l2 gst-plugin-pipewire wireplumber 
+    sudo pacman -S --needed --noconfirm pavucontrol alsa-firmware alsa-card-profiles
     sudo systemctl enable --now wireplumber
     
-    sudo pacman -S --needed --noconfirm lame flac opus ffmpeg a52dec x264 x265 
+    sudo pacman -S --needed --noconfirm lame flac opus ffmpeg a52dec x264 x265 libvpx libvorbis libogg
     sudo pacman -S --needed --noconfirm gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gstreamer-vaapi gst-libav
-    sudo pacman -S --needed --noconfirm twolame libmad libxv libvorbis libogg libtheora libmpeg2 faac faad2
+    sudo pacman -S --needed --noconfirm twolame libmad libxv libtheora libmpeg2 faac faad2 libdca libdv libavif libheif
     sudo pacman -S --needed --noconfirm openal lib32-openal
     echo "hrtf = true" | sudo tee -a  ~/.alsoftrc
+    
+    sudo touch /etc/pulse/daemon.conf
+    
+    echo "
+    # Config for better sound quality
+    daemonize = no
+    cpu-limit = no
+    high-priority = yes
+    nice-level = -11
+    realtime-scheduling = yes
+    realtime-priority = 5
+    resample-method = soxr-vhq
+    avoid-resampling = false
+    enable-remixing = no
+    rlimit-rtprio = 9
+    default-sample-format = float32le
+    default-sample-rate = 96000
+    alternate-sample-rate = 48000
+    default-sample-channels = 2
+    default-channel-map = front-left,front-right
+    default-fragments = 2
+    default-fragment-size-msec = 125
+    " | sudo tee /etc/pulse/daemon.conf
+
+
+    
+    
     
      # Name des Pakets, das überprüft werden soll
     PACKAGE="blueman"
@@ -228,6 +463,12 @@ install_amd-gpu-driver() {
     # Install Vulkan drivers
     sudo pacman -S --needed --noconfirm vulkan-radeon lib32-vulkan-radeon vulkan-swrast vulkan-icd-loader lib32-vulkan-icd-loader
     sudo pacman -S --needed --noconfirm vulkan-validation-layers vulkan-mesa-layers vulkan-headers
+    
+    echo "
+    KERNEL=="card0", SUBSYSTEM=="drm", DRIVERS=="amdgpu", ATTR{device/power_dpm_state}="performance"
+    " | sudo tee -a /usr/lib/udev/rules.d/30-amdgpu-pm.rules
+    
+    
     echo "amd-gpu-driver installed successfully!"
     read -p "Press [Enter] to continue..."
 }
@@ -421,8 +662,13 @@ install_final-steps() {
     # System cleaning
     sudo pacman -Scc --noconfirm
 
+    # Enable trim
+    sudo systemctl enable fstrim.service
     sudo systemctl enable fstrim.timer
-    sudo fstrim -av 
+    sudo systemctl start fstrim.service
+    sudo systemctl start fstrim.timer
+    echo -e "Run fstrim"
+    sudo fstrim -Av
     
    
 # Name des Pakets, das überprüft werden soll
@@ -452,6 +698,9 @@ else
     esac
 fi
 
+
+    
+    
     sudo grub-mkconfig -o /boot/grub/grub.cfg
     
     sudo timeshift --create
