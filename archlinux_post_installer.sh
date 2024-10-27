@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Last edit: 26.10.2024 
+# Last edit: 27.10.2024 
 
 echo ""
 echo "          You should read this script first!!
@@ -109,6 +109,7 @@ install_needed-packages() {
     sudo systemctl enable --now cpupower.service
     sudo cpupower frequency-set -g performance
     sudo systemctl enable --now dbus-broker.service
+    sudo systemctl --global enable dbus-broker.service
     sudo timedatectl set-ntp true
     
     #sudo systemctl disable systemd-oomd
@@ -117,6 +118,11 @@ install_needed-packages() {
     sudo systemctl enable nohang
     sudo systemctl enable ananicy-cpp
 
+    echo -e "Enable BFQ scheduler"
+    echo -e "bfq" | sudo tee /etc/modules-load.d/bfq.conf
+    echo -e 'ACTION=="add|change", ATTR{queue/scheduler}=="*bfq*", KERNEL=="sd*[!0-9]|sr*|mmcblk[0-9]*|nvme[0-9]*", ATTR{queue/scheduler}="bfq"' | sudo tee /etc/udev/rules.d/60-scheduler.rules
+    echo -e 'ACTION=="add|change", KERNEL=="sd*[!0-9]|sr*|mmcblk[0-9]*|nvme[0-9]*", ATTR{queue/iosched/slice_idle}="0", ATTR{queue/iosched/low_latency}="1"' | sudo tee /etc/udev/rules.d/90-low-latency.rules
+    
     # Makepkg config
     echo -e "Set arch"
     sudo sed -i -e "s/-march=x86-64 -mtune=generic -O2/-march=native -mtune=native -O3 -pipe -fgraphite-identity -floop-strip-mine -floop-nest-optimize -fno-semantic-interposition -fipa-pta -flto -fdevirtualize-at-ltrans -flto-partition=one/g" /etc/makepkg.conf
@@ -280,6 +286,9 @@ install_needed-packages() {
     ## Improve PCI latency
     sudo setpci -v -d *:* latency_timer=48 >/dev/null 2>&1
     
+    echo -e "Disable GPU polling"
+    echo -e "options drm_kms_helper poll=0" | sudo tee /etc/modprobe.d/disable-gpu-polling.conf
+    
     echo -e "Disable logging services"
     sudo systemctl mask dev-mqueue.mount >/dev/null 2>&1
     sudo systemctl mask sys-kernel-tracing.mount >/dev/null 2>&1
@@ -299,7 +308,7 @@ install_needed-packages() {
     sudo systemctl mask rsyslog.service >/dev/null 2>&1
 
     
-    echo "Needed packages installed successfully!"
+    echo "Needed packages and System tweaks installed successfully!"
     read -p "Press [Enter] to continue..."
 }
 
@@ -603,7 +612,7 @@ PACKAGE="pamac-aur"
 if pacman -Qs "^$PACKAGE" > /dev/null; then
     echo "$PACKAGE is already installed."
 else
-    read -p "$PACKAGE not installed. Pamac-aur (gui for pacman) install now? (ja/nein): " antwort
+    read -p "$PACKAGE is not installed. Pamac-aur (gui for pacman) install now? (ja/nein): " antwort
 
     case $antwort in
         [Jj]|[Jj][Aa])
@@ -659,9 +668,30 @@ install_firefox_browser() {
 install_final-steps() {
     
     echo "Starting final steps..."
+    
     # System cleaning
-    sudo pacman -Scc --noconfirm
-
+    echo -e "Clear the caches"
+    for n in $(find / -type d \( -name ".tmp" -o -name ".temp" -o -name ".cache" \) 2>/dev/null); do sudo find    "$n" -type f -delete; done
+    echo -e "Clear the patches"
+    rm -rfd /{tmp,var/tmp}/{.*,*}
+    sudo pacman -Qtdq &&
+    sudo pacman -Runs --noconfirm $(/bin/pacman -Qttdq)
+    sudo pacman -Sc --noconfirm
+    sudo pacman -Scc -y
+    sudo pacman-key --refresh-keys
+    sudo pacman-key --populate archlinux
+    yay -Yc --noconfirm
+    sudo paccache -rk 0
+    sudo pacman -Dk
+    sudo pacman -Sy
+    
+    
+    ## Optimize font cache
+    fc-cache -rfv
+    ## Optimize icon cache
+    gtk-update-icon-cache
+    
+    
     # Enable trim
     sudo systemctl enable fstrim.service
     sudo systemctl enable fstrim.timer
@@ -684,8 +714,7 @@ else
         [Jj]|[Jj][Aa])
             # Paket installieren
             sudo pacman -S --noconfirm "$PACKAGE"
-            read -p "Press any key to costumize grub config. For enabling os-prober etc.."
-            sudo nano -w /etc/default/grub
+            sudo sed -i -e 's/GRUB_DISABLE_OS_PROBER=.*/GRUB_DISABLE_OS_PROBER=true/' /etc/default/grub
             sudo os-prober
             echo "$PACKAGE installed now."
             ;;
