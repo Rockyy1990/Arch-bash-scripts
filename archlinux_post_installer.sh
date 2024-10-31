@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Last edit: 27.10.2024 
+# Last edit: 31.10.2024 
 
 echo ""
 echo "          You should read this script first!!
 "
 echo ""
-read -p "Its recommend to install the chaotic aur repo for some packges.
+read -p "Its recommend to install the chaotic aur repo for some packeges.
                    Press any key to continue."
 echo ""
 
@@ -14,35 +14,38 @@ echo ""
 # Function to display the menu
 display_menu() {
     clear
-    echo "---------------------------------------------"
-    echo "      Archlinux Post-Installer               "
-    echo "---------------------------------------------"
-    echo "1)  Install Chaotic-Repo (Compiled AUR)"
-    echo "2)  Install Needed-packages and system tweaks"
-    echo "3)  Install bashrc-tweaks"
-    echo "4)  Install Make-tools"
-    echo "5)  Install Programs"
-    echo "6)  Install Pipewire-full"
-    echo "7)  Install AMD GPU Driver"
-    echo "8)  Install Nvidia GPU Driver "
-    echo "9)  Install Print Support"
-    echo "10) Install Flatpak Support"
-    echo "11) Install Wine (Windows support)"
-    echo "12) Install Steam Gaming Platform"
-    echo "13) Install AUR Helper "
-    echo "14) Install Chromium Browser"
-    echo "15) Install Firefox Browser"
-    echo "16) Final steps "
-    echo "-------------------------------------------"
-    echo "17) Archlinux to CachyOS Converter"
-    echo "18) Install and config nfs (server)"
-    echo "19) Install and config nfs (client)"
-    echo "20) Install and config samba (share)"
-    echo "21) Install virt-manager (Virtualisation)"
-    echo "22) Install Libreoffice (fresh)"
-    echo "23) Install Ventoy (USB Multiboot)"
-    echo "0) EXIT"
-    echo "------------------------------------------ "
+    LIGHT_BLUE='\033[1;36m' # ANSI escape code for light blue color
+    NC='\033[0m' # No Color
+    
+    echo -e "${LIGHT_BLUE}-----------------------------------------------${NC}"
+    echo -e "${LIGHT_BLUE}        Archlinux Post-Installer               ${NC}"
+    echo -e "${LIGHT_BLUE}-----------------------------------------------${NC}"
+    echo -e "${LIGHT_BLUE}1)  Install Chaotic-Repo (Compiled AUR)${NC}"
+    echo -e "${LIGHT_BLUE}2)  Install Needed-packages and system tweaks${NC}"
+    echo -e "${LIGHT_BLUE}3)  Install bashrc-tweaks${NC}"
+    echo -e "${LIGHT_BLUE}4)  Install Programs${NC}"
+    echo -e "${LIGHT_BLUE}5)  Install Docker${NC}"
+    echo -e "${LIGHT_BLUE}6)  Install Pipewire-full (Sound)${NC}"
+    echo -e "${LIGHT_BLUE}7)  Install AMD GPU Driver${NC}"
+    echo -e "${LIGHT_BLUE}8)  Install Nvidia GPU Driver ${NC}"
+    echo -e "${LIGHT_BLUE}9)  Install Print Support${NC}"
+    echo -e "${LIGHT_BLUE}10) Install Flatpak Support${NC}"
+    echo -e "${LIGHT_BLUE}11) Install Wine (Windows support)${NC}"
+    echo -e "${LIGHT_BLUE}12) Install Steam Gaming Platform${NC}"
+    echo -e "${LIGHT_BLUE}13) Install Pamac-AUR Helper (GUI for Pacman)${NC}"
+    echo -e "${LIGHT_BLUE}14) Install Chromium Browser${NC}"
+    echo -e "${LIGHT_BLUE}15) Install Firefox Browser${NC}"
+    echo -e "${LIGHT_BLUE}16) Install Ventoy (USB Multiboot) ${NC}"
+    echo -e "${LIGHT_BLUE}---------------------------------------------${NC}"
+    echo -e "${LIGHT_BLUE}17) Archlinux to CachyOS Converter${NC}"
+    echo -e "${LIGHT_BLUE}18) Install and config nfs (server)${NC}"
+    echo -e "${LIGHT_BLUE}19) Install and config nfs (client)${NC}"
+    echo -e "${LIGHT_BLUE}20) Install and config samba (share)${NC}"
+    echo -e "${LIGHT_BLUE}21) Install virt-manager (Virtualisation)${NC}"
+    echo -e "${LIGHT_BLUE}22) Install Libreoffice (fresh)${NC}"
+    echo -e "${LIGHT_BLUE}23) Final steps (System cleaning and Backup)${NC}"
+    echo -e "${LIGHT_BLUE}0) EXIT installer and reboot${NC}"
+    echo -e "${LIGHT_BLUE}---------------------------------------------${NC}"
 }
 
 
@@ -86,10 +89,11 @@ install_chaotic-aur() {
 
 # Function to install a package
 install_needed-packages() {
-    echo "Installing Needed-packages..."
+    echo -e "Installing Needed-packages and make system tweaks.."
+    echo ""
+    sudo pacman -S --needed --noconfirm dbus-broker dkms kmod amd-ucode pacman-contrib bash-completion rsync timeshift timeshift-autosnap
     
-    sudo pacman -S --needed --noconfirm dbus-broker dkms pacman-contrib bash-completion ntp rsync timeshift timeshift-autosnap 
-    sudo pacman -S --needed --noconfirm lrzip zstd unrar unzip unace nss fuse2 fuseiso samba bind
+    sudo pacman -S --needed --noconfirm lrzip zstd unrar unzip unace nss fuse2 fuseiso libelf samba bind ethtool upx
     sudo pacman -S --needed --noconfirm xorg-xkill xorg-xinput xorg-xrandr libwnck3 libxcomposite lib32-libxcomposite libxinerama lib32-libxrandr lib32-libxfixes
     sudo pacman -S --needed --noconfirm hdparm sdparm gvfs gvfs-smb gvfs-nfs mtools xfsdump f2fs-tools udftools hwdetect sof-firmware fwupd cpupower mintstick
     sudo pacman -S --needed --noconfirm xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-user-dirs
@@ -98,7 +102,7 @@ install_needed-packages() {
     sudo pacman -S --needed --noconfirm irqbalance memavaild nohang ananicy-cpp
     
     # Fonts
-    sudo pacman -S --needed --noconfirm ttf-dejavu ttf-freefont ttf-liberation ttf-droid terminus-font
+    sudo pacman -S --needed --noconfirm ttf-dejavu ttf-freefont ttf-liberation ttf-droid terminus-font ttf-ms-fonts
     sudo pacman -S --needed --noconfirm noto-fonts noto-fonts-emoji ttf-ubuntu-font-family ttf-roboto ttf-roboto-mono
     
     # Themes
@@ -106,11 +110,55 @@ install_needed-packages() {
     sudo pacman -S --needed --noconfirm mcmojave-circle-icon-theme-git
 
     
+    echo -e "Set the theme and icon theme for XFCE4 with tweaks"
+    xfconf-query -c xsettings -p /Net/ThemeName -n -s "Mint-L-Darker"
+    xfconf-query -c xsettings -p /Net/IconThemeName -n -s "Mint-L"
+    xfconf-query -c xfwm4 -p /general/enable_workarounds -s true --create --type bool
+    xfconf-query -c xfwm4 -p /general/use_shadows -s false --create --type bool
+    # Disable screensaver
+    xfconf-query -c xscreensaver -p /timeout -s 0 --create -t int
+    xfconf-query -c xscreensaver -p /cycle -s 0 --create -t int
+
+
+    echo -e "Installing make-tools..."
+    sudo pacman -S --needed --noconfirm base-devel binutils git fakeroot gcc clang llvm bc automake autoconf ccache
+     
+   
+    echo -e "Install yay if isn't exist"
+    which yay >/dev/null 2>&1
+    if [ $? != 0 ]; then
+    cd /tmp
+    git clone https://aur.archlinux.org/yay-bin.git
+    cd yay-bin
+    makepkg -fsi --noconfirm
+    cd /tmp
+    fi
+    
+    yay -S --needed --noconfirm grub-hook update-grub faudio ffaudioconverter
+    
+   # Grub kernel start parameters 
+   #sudo sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet rootfstype=ext4,xfs,f2fs biosdevname=0 nowatchdog noautogroup noresume default_hugepagesz=2M hugepagesz=2M hugepages=256 zswap.enabled=1 zswap.compressor=lz4 zswap.max_pool_percent=10 zswap.zpool=zsmalloc workqueue.power_efficient=1 pcie_aspm=force pci=pcie_bus_perf,nomsi,noaer rd.plymouth=0 plymouth.enable=0 plymouth.ignore-serial-consoles logo.nologo consoleblank=0 vt.global_cursor_default=0 rd.systemd.show_status=auto loglevel=0 rd.udev.log_level=0 udev.log_priority=0 enable_hangcheck=0 error_capture=0 msr.allow_writes=on audit=0 nosoftlockup selinux=0 enforcing=0 debugfs=off mce=0 mds=full,nosmt vsyscall=none no_timer_check skew_tick=1 clocksource=tsc tsc=perfect nohz=on rcupdate.rcu_expedited=1 rcu_nocb_poll irqpoll threadirqs irqaffinity=0 noirqdebug iomem=relaxed iommu.passthrough=1 kthread_cpus=0 sched_policy=1 idle=nomwait noreplace-smp noatime io_delay=none rootdelay=0 elevator=noop realloc init_on_alloc=0 init_on_free=0 pti=on no_stf_barrier mitigations=off ftrace_enabled=0 fsck.repair=no"/' /etc/default/grub
+
+   
+   # btrfs tweaks if disk is
+   #sudo systemctl enable btrfs-scrub@home.timer
+   #sudo systemctl enable btrfs-scrub@-.timer
+   #sudo btrfs property set / compression lz4
+   #sudo btrfs property set /home compression lz4
+   #sudo btrfs filesystem defragment -r -v -clz4 /
+   #sudo chattr +c /
+   #sudo btrfs filesystem defragment -r -v -clz4 /home
+   #sudo chattr +c /home
+   #sudo btrfs balance start -musage=0 -dusage=50 /
+   #sudo btrfs balance start -musage=0 -dusage=50 /home
+   #sudo chattr +C /swapfile
+
+    
+# Enable the services
     sudo systemctl enable --now cpupower.service
     sudo cpupower frequency-set -g performance
     sudo systemctl enable --now dbus-broker.service
     sudo systemctl --global enable dbus-broker.service
-    sudo timedatectl set-ntp true
     
     #sudo systemctl disable systemd-oomd
     sudo systemctl enable irqbalance
@@ -118,10 +166,35 @@ install_needed-packages() {
     sudo systemctl enable nohang
     sudo systemctl enable ananicy-cpp
 
+    
+    # Environment variables
+    echo -e "
+    CPU_LIMIT=0
+    GPU_USE_SYNC_OBJECTS=1
+    SHARED_MEMORY=1
+    MALLOC_CONF=background_thread:true
+    MALLOC_CHECK=0
+    MALLOC_TRACE=0
+    LD_DEBUG_OUTPUT=0
+    MESA_DEBUG=0
+    LIBGL_DEBUG=0
+    LIBGL_NO_DRAWARRAYS=1
+    LIBGL_THROTTLE_REFRESH=1
+    LIBC_FORCE_NOCHECK=1
+    HISTCONTROL=ignoreboth:eraseboth
+    HISTSIZE=5
+    LESSHISTFILE=-
+    LESSHISTSIZE=0
+    LESSSECURE=1
+    PAGER=less" | sudo tee -a /etc/environment
+    
+    
+    # BFQ scheduler
     echo -e "Enable BFQ scheduler"
     echo -e "bfq" | sudo tee /etc/modules-load.d/bfq.conf
     echo -e 'ACTION=="add|change", ATTR{queue/scheduler}=="*bfq*", KERNEL=="sd*[!0-9]|sr*|mmcblk[0-9]*|nvme[0-9]*", ATTR{queue/scheduler}="bfq"' | sudo tee /etc/udev/rules.d/60-scheduler.rules
     echo -e 'ACTION=="add|change", KERNEL=="sd*[!0-9]|sr*|mmcblk[0-9]*|nvme[0-9]*", ATTR{queue/iosched/slice_idle}="0", ATTR{queue/iosched/low_latency}="1"' | sudo tee /etc/udev/rules.d/90-low-latency.rules
+    
     
     # Makepkg config
     echo -e "Set arch"
@@ -141,7 +214,8 @@ install_needed-packages() {
 
     # Optimize sysctl
     sudo sed -i -e '/^\/\/swappiness/d' /etc/sysctl.conf
-    echo -e "vm.swappiness = 1
+    echo -e "
+    vm.swappiness = 1
     vm.vfs_cache_pressure = 50
     vm.overcommit_memory = 1
     vm.overcommit_ratio = 50
@@ -250,9 +324,12 @@ install_needed-packages() {
     net.ipv4.tcp_timestamps=0
     net.core.bpf_jit_enable=1
     net.core.bpf_jit_harden=0
-    net.core.bpf_jit_kallsyms=0" | sudo tee /etc/sysctl.d/99-swappiness.conf
+    net.core.bpf_jit_kallsyms=0
+    " | sudo tee /etc/sysctl.d/99-swappiness.conf
     echo -e "Drop caches"
-    sudo sysctl -w vm.compact_memory=1 && sudo sysctl -w vm.drop_caches=3 && sudo sysctl -w vm.drop_caches=2
+    sudo sysctl -w vm.compact_memory=1 
+    sudo sysctl -w vm.drop_caches=2 
+    sudo sysctl -w vm.drop_caches=3
     echo -e "Restart swap"
     sudo swapoff -av && sudo swapon -av
     
@@ -267,11 +344,6 @@ install_needed-packages() {
     sudo tune2fs -O fast_commit $(df / | grep / | awk '{print $1}')
     sudo tune2fs -O fast_commit $(df /home | grep /home | awk '{print $1}')
 
-    echo -e "Improve I/O throughput"
-    echo 32 | sudo tee /sys/block/sd*[!0-9]/queue/iosched/fifo_batch
-    echo 32 | sudo tee /sys/block/mmcblk*/queue/iosched/fifo_batch
-    echo 32 | sudo tee /sys/block/nvme[0-9]*/queue/iosched/fifo_batch
-    
     
     echo -e "Enable compose cache on disk"
     sudo mkdir -p /var/cache/libx11/compose
@@ -289,24 +361,6 @@ install_needed-packages() {
     echo -e "Disable GPU polling"
     echo -e "options drm_kms_helper poll=0" | sudo tee /etc/modprobe.d/disable-gpu-polling.conf
     
-    echo -e "Disable logging services"
-    sudo systemctl mask dev-mqueue.mount >/dev/null 2>&1
-    sudo systemctl mask sys-kernel-tracing.mount >/dev/null 2>&1
-    sudo systemctl mask sys-kernel-debug.mount >/dev/null 2>&1
-    sudo systemctl mask sys-kernel-config.mount >/dev/null 2>&1
-    sudo systemctl mask systemd-update-utmp.service >/dev/null 2>&1
-    sudo systemctl mask systemd-update-utmp-runlevel.service >/dev/null 2>&1   
-    sudo systemctl mask systemd-update-utmp-shutdown.service >/dev/null 2>&1
-    sudo systemctl mask systemd-journal-flush.service >/dev/null 2>&1
-    sudo systemctl mask systemd-journal-catalog-update.service >/dev/null 2>&1
-    sudo systemctl mask systemd-journald-dev-log.socket >/dev/null 2>&1
-    sudo systemctl mask systemd-journald-audit.socket >/dev/null 2>&1
-    sudo systemctl mask logrotate.service >/dev/null 2>&1
-    sudo systemctl mask logrotate.timer >/dev/null 2>&1
-    sudo systemctl mask syslog.service >/dev/null 2>&1
-    sudo systemctl mask syslog.socket >/dev/null 2>&1
-    sudo systemctl mask rsyslog.service >/dev/null 2>&1
-
     
     echo "Needed packages and System tweaks installed successfully!"
     read -p "Press [Enter] to continue..."
@@ -332,7 +386,7 @@ install_bashrc-tweaks() {
     echo "alias update='sudo pacman -Syu --noconfirm' " | sudo tee -a ~/.bashrc
     echo "alias add='sudo pacman -S --noconfirm' " | sudo tee -a ~/.bashrc
     echo "alias remove='sudo pacman -R --noconfirm' " | sudo tee -a ~/.bashrc
-    echo "alias gup='sudo grub-mkconfig -o /boot/grub/grub.cfg' " | sudo tee -a ~/.bashrc
+    #echo "alias update-grub='sudo grub-mkconfig -o /boot/grub/grub.cfg' " | sudo tee -a ~/.bashrc
     echo "alias trim='sudo fstrim -av' " | sudo tee -a ~/.bashrc
     echo "alias pclean='sudo pacman -Scc --noconfirm' " | sudo tee -a ~/.bashrc
     echo "alias kver='uname -r' " | sudo tee -a ~/.bashrc
@@ -344,10 +398,15 @@ install_bashrc-tweaks() {
 
 
 # Function to install a package
-install_make-tools() {
-    echo "Installing make-tools..."
-    sudo pacman -S --needed --noconfirm base-devel fakeroot gcc clang llvm bc automake autoconf git ccache
-    echo "make-tools installed successfully!"
+install_docker() {
+    echo "Installing Docker..."
+    sudo pacman -S --needed --noconfirm docker
+    sudo systemctl start docker.service
+    sudo systemctl enable docker.service
+    sudo usermod -aG docker $USER
+    newgrp docker
+    docker run hello-world
+   
     read -p "Press [Enter] to continue..."
 }
 
@@ -395,13 +454,12 @@ fi
 install_pipewire-full() {
     echo "Installing pipewire..."
     sudo pacman -S --needed --noconfirm pipewire pipewire-alsa pipewire-pulse pipewire-zeroconf pipewire-v4l2 gst-plugin-pipewire wireplumber 
-    sudo pacman -S --needed --noconfirm pavucontrol alsa-firmware alsa-card-profiles
-    sudo systemctl enable --now wireplumber
+    sudo pacman -S --needed --noconfirm pavucontrol rtkit alsa-firmware alsa-plugins alsa-card-profiles alsa-lib lib32-alsa-lib
     
     sudo pacman -S --needed --noconfirm lame flac opus ffmpeg a52dec x264 x265 libvpx libvorbis libogg
     sudo pacman -S --needed --noconfirm gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gstreamer-vaapi gst-libav
     sudo pacman -S --needed --noconfirm twolame libmad libxv libtheora libmpeg2 faac faad2 libdca libdv libavif libheif
-    sudo pacman -S --needed --noconfirm openal lib32-openal
+    sudo pacman -S --needed --noconfirm 
     echo "hrtf = true" | sudo tee -a  ~/.alsoftrc
     
     sudo touch /etc/pulse/daemon.conf
@@ -429,9 +487,7 @@ install_pipewire-full() {
 
 
     
-    
-    
-     # Name des Pakets, das überprüft werden soll
+    # Name des Pakets, das überprüft werden soll
     PACKAGE="blueman"
 
     # Überprüfen, ob das Paket installiert ist
@@ -477,7 +533,57 @@ install_amd-gpu-driver() {
     KERNEL=="card0", SUBSYSTEM=="drm", DRIVERS=="amdgpu", ATTR{device/power_dpm_state}="performance"
     " | sudo tee -a /usr/lib/udev/rules.d/30-amdgpu-pm.rules
     
+    echo -e "AMD_VULKAN_ICD=radv" | sudo tee -a /etc/environment &&
+    echo -e "RADV_PERFTEST=aco,sam,nggc" | sudo tee -a /etc/environment &&
+    echo -e "RADV_FORCE_VRS=2x2" | sudo tee -a /etc/environment &&
+    echo -e "RADV_DEBUG=novrsflatshading" | sudo tee -a /etc/environment &&
+    echo -e "WINEPREFIX=~/.wine" | sudo tee -a /etc/environment &&
+    echo -e "WINE_LARGE_ADDRESS_AWARE=1" | sudo tee -a /etc/environment &&
+    echo -e "WINEFSYNC_SPINCOUNT=24" | sudo tee -a /etc/environment &&
+    echo -e "WINEFSYNC=1" | sudo tee -a /etc/environment &&
+    echo -e "WINEFSYNC_FUTEX2=1" | sudo tee -a /etc/environment &&
+    echo -e "WINE_SKIP_GECKO_INSTALLATION=1" | sudo tee -a /etc/environment &&
+    echo -e "WINE_SKIP_MONO_INSTALLATION=1" | sudo tee -a /etc/environment &&
+    echo -e "STAGING_WRITECOPY=1" | sudo tee -a /etc/environment &&
+    echo -e "STAGING_SHARED_MEMORY=1" | sudo tee -a /etc/environment &&
+    echo -e "STAGING_RT_PRIORITY_SERVER=4" | sudo tee -a /etc/environment &&
+    echo -e "STAGING_RT_PRIORITY_BASE=2" | sudo tee -a /etc/environment &&
+    echo -e "STAGING_AUDIO_PERIOD=13333" | sudo tee -a /etc/environment &&
+    echo -e "WINE_FSR_OVERRIDE=1" | sudo tee -a /etc/environment &&
+    echo -e "WINE_FULLSCREEN_FSR=1" | sudo tee -a /etc/environment &&
+    echo -e "WINE_VK_USE_FSR=1" | sudo tee -a /etc/environment &&
+    echo -e "PROTON_LOG=0" | sudo tee -a /etc/environment &&
+    echo -e "PROTON_USE_WINED3D=1" | sudo tee -a /etc/environment &&
+    echo -e "PROTON_FORCE_LARGE_ADDRESS_AWARE=1" | sudo tee -a /etc/environment &&
+    echo -e "PROTON_NO_ESYNC=1" | sudo tee -a /etc/environment &&
+    echo -e "ENABLE_VKBASALT=1" | sudo tee -a /etc/environment &&
+    echo -e "DXVK_ASYNC=1" | sudo tee -a /etc/environment &&
+    echo -e "DXVK_HUD=compile" | sudo tee -a /etc/environment &&
+    echo -e "MESA_BACK_BUFFER=ximage" | sudo tee -a /etc/environment &&
+    echo -e "MESA_NO_DITHER=1" | sudo tee -a /etc/environment &&
+    echo -e "MESA_NO_ERROR=1" | sudo tee -a /etc/environment && 
+    echo -e "MESA_GLSL_CACHE_DISABLE=false" | sudo tee -a /etc/environment &&
+    echo -e "mesa_glthread=true" | sudo tee -a /etc/environment &&
+    echo -e "ANV_ENABLE_PIPELINE_CACHE=1" | sudo tee -a /etc/environment &&
+    echo -e "__GLX_VENDOR_LIBRARY_NAME=mesa" | sudo tee -a /etc/environment &&
+    echo -e "__GLVND_DISALLOW_PATCHING=1" | sudo tee -a /etc/environment &&
+    echo -e "__GL_THREADED_OPTIMIZATIONS=1" | sudo tee -a /etc/environment &&
+    echo -e "__GL_SYNC_TO_VBLANK=1" | sudo tee -a /etc/environment &&
+    echo -e "__GL_MaxFramesAllowed=1" | sudo tee -a /etc/environment &&
+    echo -e "__GL_SHADER_DISK_CACHE=1" | sudo tee -a /etc/environment &&
+    echo -e "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1" | sudo tee -a /etc/environment &&
+    echo -e "__GL_YIELD=NOTHING" | sudo tee -a /etc/environment &&
+    echo -e "__GL_VRR_ALLOWED=0" | sudo tee -a /etc/environment &&
+    echo -e "LIBGL_DRI3_DISABLE=1" | sudo tee -a /etc/environment &&
+    echo -e "VKD3D_CONFIG=upload_hvv" | sudo tee -a /etc/environment &&
+    echo -e "LP_PERF=no_mipmap,no_linear,no_mip_linear,no_tex,no_blend,no_depth,no_alphatest" | sudo tee -a /etc/environment &&
+    echo -e "STEAM_FRAME_FORCE_CLOSE=0" | sudo tee -a /etc/environment &&
+    echo -e "STEAM_RUNTIME_HEAVY=1" | sudo tee -a /etc/environment &&
+    echo -e "GAMEMODE=1" | sudo tee -a /etc/environment &&
+    echo -e "vblank_mode=1" | sudo tee -a /etc/environment
     
+
+
     echo "amd-gpu-driver installed successfully!"
     read -p "Press [Enter] to continue..."
 }
@@ -486,7 +592,8 @@ install_amd-gpu-driver() {
 # Function to install a package
 install_nvidia-gpu-driver() {
     echo "Installing nvidia-gpu-driver..."
-    sudo pacman -S --needed --noconfirm nvidia nvidia-utils opencl-nvidia libxnvctrl libvdpau nvidia-settings
+    sudo pacman -S --needed --noconfirm nvidia nvidia-utils lib32-nvidia-utils opencl-nvidia lib32-opencl-nvidia 
+    sudo pacman -S --needed --noconfirm libxnvctrl libvdpau vulkan-icd-loader lib32-vulkan-icd-loader nvidia-settings
     echo "nvidia-gpu-driver installed successfully!"
     read -p "Press [Enter] to continue..."
 }
@@ -552,10 +659,10 @@ fi
 # Function to install a package
 install_steam-gaming-platform() {
     echo "Installing steam..."
-    sudo pacman -S --needed --noconfirm steam steam-native-runtime protontricks-git gamemode lib32-gamemode lib32-fontconfig giflib lib32-giflib libpng lib32-libpng libldap lib32-libldap gnutls lib32-gnutls
+    sudo pacman -S --needed --noconfirm steam steam-native-runtime protontricks-git gamemode lib32-gamemode openal lib32-openal lib32-fontconfig libldap lib32-libldap 
 
-    sudo pacman -S --needed --noconfirm mpg123 lib32-mpg123 v4l-utils lib32-v4l-utils lib32-libpulse lib32-alsa-plugins alsa-lib lib32-alsa-lib
-    sudo pacman -S --needed --noconfirm libgpg-error lib32-libgpg-error  libjpeg-turbo lib32-libjpeg-turbo sqlite lib32-sqlite 
+    sudo pacman -S --needed --noconfirm mpg123 lib32-mpg123 v4l-utils lib32-v4l-utils lib32-libpulse lib32-alsa-plugins sqlite lib32-sqlite 
+    sudo pacman -S --needed --noconfirm gnutls lib32-gnutls libgpg-error lib32-libgpg-error  libjpeg-turbo lib32-libjpeg-turbo 
     sudo pacman -S --needed --noconfirm lib32-libgcrypt libgcrypt lib32-libxinerama ncurses lib32-ncurses lib32-opencl-icd-loader
     sudo pacman -S --needed --noconfirm libxslt lib32-libxslt lib32-libva gtk3 lib32-gtk3 lib32-gst-plugins-base-libs  
 
@@ -596,41 +703,9 @@ fi
 
 # Function to install AUR Helper
 install_aur-helper() {
-    echo "Installing yay AUR helper..."
-    sudo pacman -S --needed --noconfirm git base-devel
-    git clone https://aur.archlinux.org/yay.git
-    cd yay || exit
-    makepkg -si --noconfirm
-    cd ..
-    rm -rf yay
+    echo "Installing Pamac AUR helper..."
+    sudo pacman -S --needed --noconfirm pamac-aur
     
-    
-# Name des Pakets, das überprüft werden soll
-PACKAGE="pamac-aur"
-
-# Überprüfen, ob das Paket installiert ist
-if pacman -Qs "^$PACKAGE" > /dev/null; then
-    echo "$PACKAGE is already installed."
-else
-    read -p "$PACKAGE is not installed. Pamac-aur (gui for pacman) install now? (ja/nein): " antwort
-
-    case $antwort in
-        [Jj]|[Jj][Aa])
-            # Paket installieren
-            sudo pacman -S --noconfirm "$PACKAGE"
-            echo "$PACKAGE wurde installiert."
-            ;;
-        [Nn]|[Nn][Ee])
-            echo "Install of $PACKAGE cancelled."
-            ;;
-        *)
-            echo "Wrong input. Write 'ja' or 'nein'."
-            ;;
-    esac
-fi
-
-
-
     echo "aur-helper installed successfully!"
     read -p "Press [Enter] to continue..."
 }
@@ -662,81 +737,6 @@ install_firefox_browser() {
 }
 
 
-
-
-# Function to install a package
-install_final-steps() {
-    
-    echo "Starting final steps..."
-    
-    # System cleaning
-    echo -e "Clear the caches"
-    for n in $(find / -type d \( -name ".tmp" -o -name ".temp" -o -name ".cache" \) 2>/dev/null); do sudo find    "$n" -type f -delete; done
-    echo -e "Clear the patches"
-    rm -rfd /{tmp,var/tmp}/{.*,*}
-    sudo pacman -Qtdq &&
-    sudo pacman -Runs --noconfirm $(/bin/pacman -Qttdq)
-    sudo pacman -Sc --noconfirm
-    sudo pacman -Scc -y
-    sudo pacman-key --refresh-keys
-    sudo pacman-key --populate archlinux
-    yay -Yc --noconfirm
-    sudo paccache -rk 0
-    sudo pacman -Dk
-    sudo pacman -Sy
-    
-    
-    ## Optimize font cache
-    fc-cache -rfv
-    ## Optimize icon cache
-    gtk-update-icon-cache
-    
-    
-    # Enable trim
-    sudo systemctl enable fstrim.service
-    sudo systemctl enable fstrim.timer
-    sudo systemctl start fstrim.service
-    sudo systemctl start fstrim.timer
-    echo -e "Run fstrim"
-    sudo fstrim -Av
-    
-   
-# Name des Pakets, das überprüft werden soll
-PACKAGE="os-prober"
-
-# Überprüfen, ob das Paket installiert ist
-if pacman -Qs "^$PACKAGE" > /dev/null; then
-    echo "$PACKAGE is already installed."
-else
-    read -p "$PACKAGE is not installed. os-prober (multiboot with windows etc) install now? (ja/nein): " antwort
-
-    case $antwort in
-        [Jj]|[Jj][Aa])
-            # Paket installieren
-            sudo pacman -S --noconfirm "$PACKAGE"
-            sudo sed -i -e 's/GRUB_DISABLE_OS_PROBER=.*/GRUB_DISABLE_OS_PROBER=true/' /etc/default/grub
-            sudo os-prober
-            echo "$PACKAGE installed now."
-            ;;
-        [Nn]|[Nn][Ee])
-            echo "Install from $PACKAGE canceled."
-            ;;
-        *)
-            echo "Wrong input. Write 'ja' oder 'nein'."
-            ;;
-    esac
-fi
-
-
-    
-    
-    sudo grub-mkconfig -o /boot/grub/grub.cfg
-    
-    sudo timeshift --create
-    
-    echo "The final steps are done! Please reboot archlinux now"
-    read -p "Press [Enter] to continue..."
-}
 
 # Function to install a package
 install_arch_to_cachyos_converter() {
@@ -993,17 +993,87 @@ install_ventoy() {
 
 }
 
+
+# Function to install a package
+install_final-steps() {
+    
+    echo "Starting final steps..."
+    
+    sudo pacman -Scc --noconfirm
+    yay -Yc --noconfirm
+    sudo paccache -rk 0
+    sudo pacman -Dk
+    sudo pacman -Sy
+    
+    echo -e "Clearing temporary files..."
+    sudo rm -rf /tmp/*
+    sudo rm -rf ~/.cache/*
+    sudo rm -rf ~/.config/saved-session/*
+    
+
+    ## Optimize font cache
+    fc-cache -rfv
+    ## Optimize icon cache
+    gtk-update-icon-cache
+    
+    
+    echo -e "Enable and run trim.."
+    sudo systemctl enable fstrim.service
+    sudo systemctl enable fstrim.timer
+    sudo systemctl start fstrim.service
+    sudo systemctl start fstrim.timer
+    sudo fstrim -Av
+    
+   
+# Name des Pakets, das überprüft werden soll
+PACKAGE="os-prober"
+
+# Überprüfen, ob das Paket installiert ist
+if pacman -Qs "^$PACKAGE" > /dev/null; then
+    echo "$PACKAGE is already installed."
+else
+    read -p "$PACKAGE is not installed. os-prober (multiboot with windows etc) install now? (ja/nein): " antwort
+
+    case $antwort in
+        [Jj]|[Jj][Aa])
+            # Paket installieren
+            sudo pacman -S --noconfirm "$PACKAGE"
+            sudo sed -i -e 's/#GRUB_DISABLE_OS_PROBER=true/GRUB_DISABLE_OS_PROBER=false/' /etc/default/grub
+            sudo os-prober
+            echo "$PACKAGE installed now."
+            ;;
+        [Nn]|[Nn][Ee])
+            echo "Install from $PACKAGE canceled."
+            ;;
+        *)
+            echo "Wrong input. Write 'ja' oder 'nein'."
+            ;;
+    esac
+fi
+
+
+    sudo grub-mkconfig -o /boot/grub/grub.cfg
+    
+    sudo timeshift --create
+    
+    echo "The final steps are done! Please reboot archlinux now"
+    read -p "Press [Enter] to continue..."
+}
+
+
+
+
 # Main script loop
 while true; do
     display_menu
-    read -p "Select an option [0-22]: " option
+    read -p "Select an option [0-23]: " option
 
     case $option in
         1) install_chaotic-aur ;;
         2) install_needed-packages ;;
         3) install_bashrc-tweaks ;;  
-        4) install_make-tools ;;
-        5) install_programs ;;
+        4) install_programs ;;
+        5) install_docker ;;
         6) install_pipewire-full ;;
         7) install_amd-gpu-driver ;;
         8) install_nvidia-gpu-driver ;;
@@ -1014,15 +1084,15 @@ while true; do
        13) install_aur-helper ;;
        14) install_chromium_browser ;;
        15) install_firefox_browser ;;
-       16) install_final-steps ;;
+       16) install_ventoy ;;
        17) install_arch_to_cachyos_converter ;;
        18) install_nfs_server ;;  
        19) install_nfs_client ;;  
        20) install_samba ;;
        21) install_virt-manager ;; 
        22) install_libreoffice ;;  
-       23) install_ventoy ;;  
-         0) echo "Exiting..."; exit 0 ;;
+       23) install_final-steps ;;  
+         0) echo "Exiting..."; sudo reboot ;;
         *) echo "Invalid option! Please try again." ;;
     esac
 done
