@@ -484,12 +484,7 @@ install_pipewire-full() {
     default-fragment-size-msec = 125
     " | sudo tee /etc/pulse/daemon.conf
 
-    echo "
-    PIPEWIRE_AUDIO=1
-    PW_AUDIO_BUFFER_SIZE=1024
-    PIPEWIRE_LATENCY=128/48000
-    PIPEWIRE_MAX_BUFFER=4
-    " | sudo tee -a /etc/environment
+    
     
     # Name des Pakets, das überprüft werden soll
     PACKAGE="blueman"
