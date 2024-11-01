@@ -213,7 +213,7 @@ install_needed-packages() {
     sudo sed -i -e "s|OPTIONS=(.*|OPTIONS=(strip !docs !libtool !staticlibs emptydirs zipman purge !debug lto)|g" /etc/makepkg.conf
 
     # Optimize sysctl
-    sudo sed -i -e '/^\/\/swappiness/d' /etc/sysctl.conf
+    sudo touch /etc/sysctl.d/99-custom.conf
     echo -e "
     vm.swappiness = 1
     vm.vfs_cache_pressure = 50
@@ -325,13 +325,13 @@ install_needed-packages() {
     net.core.bpf_jit_enable=1
     net.core.bpf_jit_harden=0
     net.core.bpf_jit_kallsyms=0
-    " | sudo tee /etc/sysctl.d/99-swappiness.conf
+    " | sudo tee /etc/sysctl.d/99-custom.conf
     echo -e "Drop caches"
     sudo sysctl -w vm.compact_memory=1 
     sudo sysctl -w vm.drop_caches=2 
     sudo sysctl -w vm.drop_caches=3
-    echo -e "Restart swap"
-    sudo swapoff -av && sudo swapon -av
+    sudo sysctl --system
+    
     
     
     echo -e "Enable write cache"
@@ -456,10 +456,9 @@ install_pipewire-full() {
     sudo pacman -S --needed --noconfirm pipewire pipewire-alsa pipewire-pulse pipewire-zeroconf pipewire-v4l2 gst-plugin-pipewire wireplumber 
     sudo pacman -S --needed --noconfirm pavucontrol rtkit alsa-firmware alsa-plugins alsa-card-profiles alsa-lib lib32-alsa-lib
     
-    sudo pacman -S --needed --noconfirm lame flac opus ffmpeg a52dec x264 x265 libvpx libvorbis libogg
+    sudo pacman -S --needed --noconfirm lame flac opus ffmpeg a52dec x264 x265 libvpx libvorbis libogg speex libdca libfdk-aac
     sudo pacman -S --needed --noconfirm gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gstreamer-vaapi gst-libav
-    sudo pacman -S --needed --noconfirm twolame libmad libxv libtheora libmpeg2 faac faad2 libdca libdv libavif libheif
-    sudo pacman -S --needed --noconfirm 
+    sudo pacman -S --needed --noconfirm twolame libmad libxv libtheora libmpeg2 faac faad2 libdca libdv libavif libheif xvidcore
     echo "hrtf = true" | sudo tee -a  ~/.alsoftrc
     
     sudo touch /etc/pulse/daemon.conf
@@ -472,7 +471,7 @@ install_pipewire-full() {
     nice-level = -11
     realtime-scheduling = yes
     realtime-priority = 5
-    resample-method = soxr-vhq
+    resample-method = speex-float-10
     avoid-resampling = false
     enable-remixing = no
     rlimit-rtprio = 9
@@ -485,7 +484,12 @@ install_pipewire-full() {
     default-fragment-size-msec = 125
     " | sudo tee /etc/pulse/daemon.conf
 
-
+    echo "
+    PIPEWIRE_AUDIO=1
+    PW_AUDIO_BUFFER_SIZE=1024
+    PIPEWIRE_LATENCY=128/48000
+    PIPEWIRE_MAX_BUFFER=4
+    " | sudo tee -a /etc/environment
     
     # Name des Pakets, das überprüft werden soll
     PACKAGE="blueman"
@@ -533,19 +537,17 @@ install_amd-gpu-driver() {
     KERNEL=="card0", SUBSYSTEM=="drm", DRIVERS=="amdgpu", ATTR{device/power_dpm_state}="performance"
     " | sudo tee -a /usr/lib/udev/rules.d/30-amdgpu-pm.rules
     
-    echo -e "AMD_VULKAN_ICD=radv" | sudo tee -a /etc/environment &&
+    echo -e "AMD_VULKAN_ICD=RADV" | sudo tee -a /etc/environment &&
     echo -e "RADV_PERFTEST=aco,sam,nggc" | sudo tee -a /etc/environment &&
-    echo -e "RADV_FORCE_VRS=2x2" | sudo tee -a /etc/environment &&
     echo -e "RADV_DEBUG=novrsflatshading" | sudo tee -a /etc/environment &&
     echo -e "WINEPREFIX=~/.wine" | sudo tee -a /etc/environment &&
+    echo -e "MOZ_ENABLE_WAYLAND=0" | sudo tee -a /etc/environment &&
     echo -e "WINE_LARGE_ADDRESS_AWARE=1" | sudo tee -a /etc/environment &&
     echo -e "WINEFSYNC_SPINCOUNT=24" | sudo tee -a /etc/environment &&
     echo -e "WINEFSYNC=1" | sudo tee -a /etc/environment &&
-    echo -e "WINEFSYNC_FUTEX2=1" | sudo tee -a /etc/environment &&
-    echo -e "WINE_SKIP_GECKO_INSTALLATION=1" | sudo tee -a /etc/environment &&
-    echo -e "WINE_SKIP_MONO_INSTALLATION=1" | sudo tee -a /etc/environment &&
-    echo -e "STAGING_WRITECOPY=1" | sudo tee -a /etc/environment &&
-    echo -e "STAGING_SHARED_MEMORY=1" | sudo tee -a /etc/environment &&
+    echo -e "WINEFSYNC_FUTEX2=0" | sudo tee -a /etc/environment &&
+    echo -e "STAGING_WRITECOPY=0" | sudo tee -a /etc/environment &&
+    echo -e "STAGING_SHARED_MEMORY=0" | sudo tee -a /etc/environment &&
     echo -e "STAGING_RT_PRIORITY_SERVER=4" | sudo tee -a /etc/environment &&
     echo -e "STAGING_RT_PRIORITY_BASE=2" | sudo tee -a /etc/environment &&
     echo -e "STAGING_AUDIO_PERIOD=13333" | sudo tee -a /etc/environment &&
@@ -553,10 +555,10 @@ install_amd-gpu-driver() {
     echo -e "WINE_FULLSCREEN_FSR=1" | sudo tee -a /etc/environment &&
     echo -e "WINE_VK_USE_FSR=1" | sudo tee -a /etc/environment &&
     echo -e "PROTON_LOG=0" | sudo tee -a /etc/environment &&
-    echo -e "PROTON_USE_WINED3D=1" | sudo tee -a /etc/environment &&
+    echo -e "PROTON_USE_WINED3D=0" | sudo tee -a /etc/environment &&
     echo -e "PROTON_FORCE_LARGE_ADDRESS_AWARE=1" | sudo tee -a /etc/environment &&
     echo -e "PROTON_NO_ESYNC=1" | sudo tee -a /etc/environment &&
-    echo -e "ENABLE_VKBASALT=1" | sudo tee -a /etc/environment &&
+    echo -e "ENABLE_VKBASALT=0" | sudo tee -a /etc/environment &&
     echo -e "DXVK_ASYNC=1" | sudo tee -a /etc/environment &&
     echo -e "DXVK_HUD=compile" | sudo tee -a /etc/environment &&
     echo -e "MESA_BACK_BUFFER=ximage" | sudo tee -a /etc/environment &&
@@ -570,7 +572,7 @@ install_amd-gpu-driver() {
     echo -e "__GL_THREADED_OPTIMIZATIONS=1" | sudo tee -a /etc/environment &&
     echo -e "__GL_SYNC_TO_VBLANK=1" | sudo tee -a /etc/environment &&
     echo -e "__GL_MaxFramesAllowed=1" | sudo tee -a /etc/environment &&
-    echo -e "__GL_SHADER_DISK_CACHE=1" | sudo tee -a /etc/environment &&
+    echo -e "__GL_SHADER_DISK_CACHE=0" | sudo tee -a /etc/environment &&
     echo -e "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1" | sudo tee -a /etc/environment &&
     echo -e "__GL_YIELD=NOTHING" | sudo tee -a /etc/environment &&
     echo -e "__GL_VRR_ALLOWED=0" | sudo tee -a /etc/environment &&
