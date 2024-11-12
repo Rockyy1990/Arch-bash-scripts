@@ -105,10 +105,7 @@ compile_kernel() {
 
     # Set architecture to x86_64
     #export ARCH=x86_64
-    export CC=clang
-    export CXX=clang++
-    export CFLAGS="-march=native -O3 -fopenmp"
-    export CXXFLAGS="-march=native -O3 -fopenmp"
+    
 
     # Update the configuration to reflect new kernel options
     print_green "Updating kernel configuration..."
