@@ -1,21 +1,22 @@
 #!/bin/bash
 
-# Last edit: 31.10.2024 
+# Last edit: 05.11.2024 
 
 echo ""
 echo "          You should read this script first!!
+"
+echo "                (The AUR Helper is yay)
 "
 echo ""
 read -p "Its recommend to install the chaotic aur repo for some packeges.
                    Press any key to continue."
 echo ""
 
-
 # Function to display the menu
 display_menu() {
     clear
     LIGHT_BLUE='\033[1;36m' # ANSI escape code for light blue color
-    NC='\033[0m' # No Color
+    NC='\033[0m'            # No Color
     
     echo -e "${LIGHT_BLUE}-----------------------------------------------${NC}"
     echo -e "${LIGHT_BLUE}        Archlinux Post-Installer               ${NC}"
@@ -47,6 +48,7 @@ display_menu() {
     echo -e "${LIGHT_BLUE}0) EXIT installer and reboot${NC}"
     echo -e "${LIGHT_BLUE}---------------------------------------------${NC}"
 }
+
 
 
 # Function to install a package
@@ -87,23 +89,25 @@ install_chaotic-aur() {
 }
 
 
+
 # Function to install a package
 install_needed-packages() {
     echo -e "Installing Needed-packages and make system tweaks.."
     echo ""
-    sudo pacman -S --needed --noconfirm dbus-broker dkms kmod amd-ucode pacman-contrib bash-completion rsync timeshift timeshift-autosnap
+    sudo pacman -S --needed --noconfirm dbus-broker dkms kmod amd-ucode pacman-contrib bash-completion yay samba bind ethtool rsync timeshift timeshift-autosnap
+    sudo pacman -S --needed --noconfirm gufw gsmartcontrol mtools xfsdump f2fs-tools udftools gnome-disk-utility
     
-    sudo pacman -S --needed --noconfirm lrzip zstd unrar unzip unace nss fuse2 fuseiso libelf samba bind ethtool upx
+    sudo pacman -S --needed --noconfirm lrzip zstd unrar unzip unace nss fuse2 fuseiso libelf upx
     sudo pacman -S --needed --noconfirm xorg-xkill xorg-xinput xorg-xrandr libwnck3 libxcomposite lib32-libxcomposite libxinerama lib32-libxrandr lib32-libxfixes
-    sudo pacman -S --needed --noconfirm hdparm sdparm gvfs gvfs-smb gvfs-nfs mtools xfsdump f2fs-tools udftools hwdetect sof-firmware fwupd cpupower mintstick
+    sudo pacman -S --needed --noconfirm hdparm sdparm gvfs gvfs-smb gvfs-nfs hwdetect sof-firmware fwupd cpupower mintstick
     sudo pacman -S --needed --noconfirm xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-user-dirs
     
     #System tweaks
     sudo pacman -S --needed --noconfirm irqbalance memavaild nohang ananicy-cpp
     
     # Fonts
-    sudo pacman -S --needed --noconfirm ttf-dejavu ttf-freefont ttf-liberation ttf-droid terminus-font ttf-ms-fonts
-    sudo pacman -S --needed --noconfirm noto-fonts noto-fonts-emoji ttf-ubuntu-font-family ttf-roboto ttf-roboto-mono
+    sudo pacman -S --needed --noconfirm ttf-dejavu ttf-freefont ttf-liberation ttf-droid terminus-font 
+    sudo pacman -S --needed --noconfirm noto-fonts ttf-ubuntu-font-family ttf-roboto ttf-roboto-mono apple-fonts
     
     # Themes
     sudo pacman -S --needed --noconfirm mint-l-icons mint-y-icons mint-l-theme
@@ -115,26 +119,19 @@ install_needed-packages() {
     xfconf-query -c xsettings -p /Net/IconThemeName -n -s "Mint-L"
     xfconf-query -c xfwm4 -p /general/enable_workarounds -s true --create --type bool
     xfconf-query -c xfwm4 -p /general/use_shadows -s false --create --type bool
-    # Disable screensaver
+    #xfconf-query -c xfce4-desktop -v --create -p /desktop-icons/style -t int -s 0
+    
     xfconf-query -c xscreensaver -p /timeout -s 0 --create -t int
     xfconf-query -c xscreensaver -p /cycle -s 0 --create -t int
+    xfconf-query -c xfce4-session -p /shutdown/LockScreen -s false
+    xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/lock-screen-suspend-hibernate -s false
+    xfconf-query -c xfce4-session -p /startup/ssh-agent/enabled -n -t bool -s false
 
 
     echo -e "Installing make-tools..."
-    sudo pacman -S --needed --noconfirm base-devel binutils git fakeroot gcc clang llvm bc automake autoconf ccache
+    sudo pacman -S --needed --noconfirm base-devel binutils git fakeroot gcc clang llvm bc meson ninja rust automake autoconf ccache
      
-   
-    echo -e "Install yay if isn't exist"
-    which yay >/dev/null 2>&1
-    if [ $? != 0 ]; then
-    cd /tmp
-    git clone https://aur.archlinux.org/yay-bin.git
-    cd yay-bin
-    makepkg -fsi --noconfirm
-    cd /tmp
-    fi
-    
-    yay -S --needed --noconfirm grub-hook update-grub faudio ffaudioconverter
+    yay -S --needed --noconfirm grub-hook update-grub faudio ffaudioconverter ttf-ms-win11-auto	 
     
    # Grub kernel start parameters 
    #sudo sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet rootfstype=ext4,xfs,f2fs biosdevname=0 nowatchdog noautogroup noresume default_hugepagesz=2M hugepagesz=2M hugepages=256 zswap.enabled=1 zswap.compressor=lz4 zswap.max_pool_percent=10 zswap.zpool=zsmalloc workqueue.power_efficient=1 pcie_aspm=force pci=pcie_bus_perf,nomsi,noaer rd.plymouth=0 plymouth.enable=0 plymouth.ignore-serial-consoles logo.nologo consoleblank=0 vt.global_cursor_default=0 rd.systemd.show_status=auto loglevel=0 rd.udev.log_level=0 udev.log_priority=0 enable_hangcheck=0 error_capture=0 msr.allow_writes=on audit=0 nosoftlockup selinux=0 enforcing=0 debugfs=off mce=0 mds=full,nosmt vsyscall=none no_timer_check skew_tick=1 clocksource=tsc tsc=perfect nohz=on rcupdate.rcu_expedited=1 rcu_nocb_poll irqpoll threadirqs irqaffinity=0 noirqdebug iomem=relaxed iommu.passthrough=1 kthread_cpus=0 sched_policy=1 idle=nomwait noreplace-smp noatime io_delay=none rootdelay=0 elevator=noop realloc init_on_alloc=0 init_on_free=0 pti=on no_stf_barrier mitigations=off ftrace_enabled=0 fsck.repair=no"/' /etc/default/grub
@@ -166,7 +163,11 @@ install_needed-packages() {
     sudo systemctl enable nohang
     sudo systemctl enable ananicy-cpp
 
-    
+    sudo ufw default deny incoming
+    sudo ufw default allow outgoing
+    sudo systemctl enable ufw
+
+   
     # Environment variables
     echo -e "
     CPU_LIMIT=0
@@ -196,22 +197,7 @@ install_needed-packages() {
     echo -e 'ACTION=="add|change", KERNEL=="sd*[!0-9]|sr*|mmcblk[0-9]*|nvme[0-9]*", ATTR{queue/iosched/slice_idle}="0", ATTR{queue/iosched/low_latency}="1"' | sudo tee /etc/udev/rules.d/90-low-latency.rules
     
     
-    # Makepkg config
-    echo -e "Set arch"
-    sudo sed -i -e "s/-march=x86-64 -mtune=generic -O2/-march=native -mtune=native -O3 -pipe -fgraphite-identity -floop-strip-mine -floop-nest-optimize -fno-semantic-interposition -fipa-pta -flto -fdevirtualize-at-ltrans -flto-partition=one/g" /etc/makepkg.conf
-    echo -e "Set BUILDENV"
-    sudo sed -i -e "s|BUILDENV.*|BUILDENV=(!distcc color ccache check !sign)|g" /etc/makepkg.conf
-    echo -e "Set BUILDDIR"
-    sudo sed -i -e "s|#BUILDDIR.*|BUILDDIR=/tmp/makepkg|g" /etc/makepkg.conf
-    echo -e "Use all cores for compilation"
-    sudo sed -i -e "s/-j.*/-j$(expr $(nproc) - 1) -l$(nproc)\"/;s/^#MAKEFLAGS/MAKEFLAGS/;s/^#RUSTFLAGS/RUSTFLAGS/" /etc/makepkg.conf
-    echo -e "Use all cores for compression"
-    sudo sed -i -e "s/xz.*/xz -c -z -q - --threads=$(nproc))/;s/^#COMPRESSXZ/COMPRESSXZ/;s/zstd.*/zstd -c -z -q - --threads=$(nproc))/;s/^#COMPRESSZST/COMPRESSZST/;s/lz4.*/lz4 -q --best)/;s/^#COMPRESSLZ4/COMPRESSLZ4/" /etc/makepkg.conf
-    echo -e "Use different compression algorithm"
-    sudo sed -i -e "s/PKGEXT.*/PKGEXT='.pkg.tar.lz4'/g" /etc/makepkg.conf
-    echo -e "Set OPTIONS"
-    sudo sed -i -e "s|OPTIONS=(.*|OPTIONS=(strip !docs !libtool !staticlibs emptydirs zipman purge !debug lto)|g" /etc/makepkg.conf
-
+   
     # Optimize sysctl
     sudo touch /etc/sysctl.d/99-custom.conf
     echo -e "
@@ -367,6 +353,8 @@ install_needed-packages() {
 }
 
 
+
+
 # Function to install a package
 install_bashrc-tweaks() {
     
@@ -397,6 +385,7 @@ install_bashrc-tweaks() {
 
 
 
+
 # Function to install a package
 install_docker() {
     echo "Installing Docker..."
@@ -412,35 +401,69 @@ install_docker() {
 
 
 
+
 # Function to install a package
 install_programs() {
-    echo "Installing programs..."
-    sudo pacman -S --needed --noconfirm  thunderbird thunderbird-i18n-de vlc lollypop discord transmission-gtk file-roller yt-dlp
-    sudo pacman -S --needed --noconfirm gufw gsmartcontrol gnome-disk-utility
-    sudo ufw enable
+    # Eine Liste von Paketen, die zur Installation verfügbar sind
+available_packages=(
+    "discord"
+    "thunderbird"
+    "vlc"
+    "soundconverter"
+    "lollypop"
+    "strawberry"
+    "yt-dlp"
+    "gparted"
+    "heroic-games-launcher-bin"
+    "bottles"
+    "protonup-qt"
+    "obs-studio"
+    "waterfox-bin"
+    "hypnotix"
+    "vmware-workstation"
+    "whatsapp-for-linux"
+)
 
-# Name des Pakets, das überprüft werden soll
-PACKAGE="soundconverter"
+# Temporäre Datei zur Speicherung der Auswahl
+tempfile=$(mktemp)
 
-# Überprüfen, ob das Paket installiert ist
-if pacman -Qs "^$PACKAGE" > /dev/null; then
-    echo "$PACKAGE already installed."
+# Dialog für die Auswahl der Pakete
+dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu installierenden Pakete aus:" 15 50 8 \
+    "${available_packages[0]}" "Discord" off \
+    "${available_packages[1]}" "Thunderbird Email" off \
+    "${available_packages[2]}" "VLC Videoplayer" off \
+    "${available_packages[3]}" "Soundconverter" off \
+    "${available_packages[4]}" "Musikplayer Lollypop" off \
+    "${available_packages[5]}" "Musikplayer Strawberry" off \
+    "${available_packages[6]}" "Youtube-Downloader" off \
+    "${available_packages[7]}" "Partitionierung" off \
+    "${available_packages[8]}" "Heroic Gamelauncher" off \
+    "${available_packages[9]}" "Wine Bottle Manager" off \
+    "${available_packages[10]}" "Steam Proton Manager" off \
+    "${available_packages[11]}" "OBS-Studio" off \
+    "${available_packages[12]}" "Waterfox Web Browser" off \
+    "${available_packages[13]}" "Hypnotix IPTV" off \
+    "${available_packages[14]}" "VMware Workstation" off \
+    "${available_packages[14]}" "Whatsapp Messenger for Linux" off \		
+    2> "$tempfile"
+
+# Wenn der Benutzer abbricht
+if [ $? -ne 0 ]; then
+    echo "Installation abgebrochen."
+    rm -f "$tempfile"
+    
+fi
+
+# Pakete aus der temporären Datei lesen
+selected_packages=($(<"$tempfile"))
+rm -f "$tempfile"
+
+# Pakete installieren
+if [[ ${#selected_packages[@]} -gt 0 ]]; then
+    echo "Installiere die folgenden Pakete: ${selected_packages[*]}"
+    sudo pacman -S --needed --noconfirm "${selected_packages[@]}"
 else
-    read -p "$PACKAGE is not installed. Soundconverter (mp3, flac etc converter)? (ja/nein): " antwort
-
-    case $antwort in
-        [Jj]|[Jj][Aa])
-            # Paket installieren
-            sudo pacman -S --noconfirm "$PACKAGE"
-            echo "$PACKAGE now installed."
-            ;;
-        [Nn]|[Nn][Ee])
-            echo "Install from $PACKAGE cancelled."
-            ;;
-        *)
-            echo "Wrong input. Write 'ja' oder 'nein'."
-            ;;
-    esac
+    echo "Keine Pakete ausgewählt."
 fi
 
     
@@ -518,6 +541,7 @@ install_pipewire-full() {
 
 
 
+
 # Function to install a package
 install_amd-gpu-driver() {
     echo "Installing amd-gpu-driver..."
@@ -559,7 +583,7 @@ install_amd-gpu-driver() {
     echo -e "MESA_BACK_BUFFER=ximage" | sudo tee -a /etc/environment &&
     echo -e "MESA_NO_DITHER=1" | sudo tee -a /etc/environment &&
     echo -e "MESA_NO_ERROR=1" | sudo tee -a /etc/environment && 
-    echo -e "MESA_GLSL_CACHE_DISABLE=false" | sudo tee -a /etc/environment &&
+    echo -e "MESA_SHADER_CACHE_DISABLE=false" | sudo tee -a /etc/environment &&
     echo -e "mesa_glthread=true" | sudo tee -a /etc/environment &&
     echo -e "ANV_ENABLE_PIPELINE_CACHE=1" | sudo tee -a /etc/environment &&
     echo -e "__GLX_VENDOR_LIBRARY_NAME=mesa" | sudo tee -a /etc/environment &&
@@ -586,14 +610,63 @@ install_amd-gpu-driver() {
 }
 
 
+
+
 # Function to install a package
 install_nvidia-gpu-driver() {
     echo "Installing nvidia-gpu-driver..."
     sudo pacman -S --needed --noconfirm nvidia nvidia-utils lib32-nvidia-utils opencl-nvidia lib32-opencl-nvidia 
     sudo pacman -S --needed --noconfirm libxnvctrl libvdpau vulkan-icd-loader lib32-vulkan-icd-loader nvidia-settings
+    
+            echo -e "WINEPREFIX=~/.wine" | sudo tee -a /etc/environment &&
+            echo -e "WINE_LARGE_ADDRESS_AWARE=1" | sudo tee -a /etc/environment &&
+            echo -e "WINEFSYNC_SPINCOUNT=24" | sudo tee -a /etc/environment &&
+            echo -e "WINEFSYNC=1" | sudo tee -a /etc/environment &&
+            echo -e "WINEFSYNC_FUTEX2=1" | sudo tee -a /etc/environment &&
+            echo -e "WINE_SKIP_GECKO_INSTALLATION=1" | sudo tee -a /etc/environment &&
+            echo -e "WINE_SKIP_MONO_INSTALLATION=1" | sudo tee -a /etc/environment &&
+            echo -e "STAGING_WRITECOPY=1" | sudo tee -a /etc/environment &&
+            echo -e "STAGING_SHARED_MEMORY=1" | sudo tee -a /etc/environment &&
+            echo -e "STAGING_RT_PRIORITY_SERVER=4" | sudo tee -a /etc/environment &&
+            echo -e "STAGING_RT_PRIORITY_BASE=2" | sudo tee -a /etc/environment &&
+            echo -e "STAGING_AUDIO_PERIOD=13333" | sudo tee -a /etc/environment &&
+            echo -e "PROTON_LOG=0" | sudo tee -a /etc/environment &&
+            echo -e "PROTON_USE_WINED3D=1" | sudo tee -a /etc/environment &&
+            echo -e "PROTON_FORCE_LARGE_ADDRESS_AWARE=1" | sudo tee -a /etc/environment &&
+            echo -e "PROTON_NO_ESYNC=1" | sudo tee -a /etc/environment &&
+            echo -e "ENABLE_VKBASALT=1" | sudo tee -a /etc/environment &&
+            echo -e "DXVK_ASYNC=1" | sudo tee -a /etc/environment &&
+            echo -e "DXVK_HUD=compile" | sudo tee -a /etc/environment &&
+            echo -e "MESA_BACK_BUFFER=ximage" | sudo tee -a /etc/environment &&
+            echo -e "MESA_NO_DITHER=1" | sudo tee -a /etc/environment &&
+            echo -e "MESA_NO_ERROR=1" | sudo tee -a /etc/environment &&
+            echo -e "MESA_GLSL_CACHE_DISABLE=false" | sudo tee -a /etc/environment &&
+            echo -e "mesa_glthread=true" | sudo tee -a /etc/environment &&
+            echo -e "ANV_ENABLE_PIPELINE_CACHE=1" | sudo tee -a /etc/environment &&
+            echo -e "__NV_PRIME_RENDER_OFFLOAD=1" | sudo tee -a /etc/environment &&
+            echo -e "__GLX_VENDOR_LIBRARY_NAME=mesa" | sudo tee -a /etc/environment &&
+            echo -e "__GLVND_DISALLOW_PATCHING=1" | sudo tee -a /etc/environment &&
+            echo -e "__GL_THREADED_OPTIMIZATIONS=1" | sudo tee -a /etc/environment &&
+            echo -e "__GL_SYNC_TO_VBLANK=1" | sudo tee -a /etc/environment &&
+            echo -e "__GL_MaxFramesAllowed=1" | sudo tee -a /etc/environment &&
+            echo -e "__GL_SHADER_DISK_CACHE=1" | sudo tee -a /etc/environment &&
+            echo -e "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1" | sudo tee -a /etc/environment &&
+            echo -e "__GL_YIELD=NOTHING" | sudo tee -a /etc/environment &&
+            echo -e "__GL_VRR_ALLOWED=0" | sudo tee -a /etc/environment &&
+            echo -e "LIBGL_DRI3_DISABLE=1" | sudo tee -a /etc/environment &&
+            echo -e "VKD3D_CONFIG=upload_hvv" | sudo tee -a /etc/environment &&
+            echo -e "LP_PERF=no_mipmap,no_linear,no_mip_linear,no_tex,no_blend,no_depth,no_alphatest" | sudo tee -a /etc/environment &&
+            echo -e "STEAM_FRAME_FORCE_CLOSE=0" | sudo tee -a /etc/environment &&
+            echo -e "STEAM_RUNTIME_HEAVY=1" | sudo tee -a /etc/environment &&
+            echo -e "GAMEMODE=1" | sudo tee -a /etc/environment &&
+            echo -e "vblank_mode=1" | sudo tee -a /etc/environment
+
+
     echo "nvidia-gpu-driver installed successfully!"
     read -p "Press [Enter] to continue..."
 }
+
+
 
 
 # Function to install a package
@@ -607,6 +680,8 @@ install_printer-support() {
 }
 
 
+
+
 # Function to install a package
 install_flatpak-support() {
    echo "Installing flatpak..."
@@ -618,38 +693,17 @@ install_flatpak-support() {
 }
 
 
+
+
 # Function to install a package
 install_wine() {
     echo "Installing wine..."
     sudo pacman -S --needed --noconfirm wine wine-mono wine-gecko winetricks libgdiplus vkd3d lib32-vkd3d cabextract zenity
    
-# Name des Pakets, das überprüft werden soll
-PACKAGE="bottles"
-
-# Überprüfen, ob das Paket installiert ist
-if pacman -Qs "^$PACKAGE" > /dev/null; then
-    echo "$PACKAGE is already installed."
-else
-    read -p "$PACKAGE not installed. bottles (gui for wine) installieren? (ja/nein): " antwort
-
-    case $antwort in
-        [Jj]|[Jj][Aa])
-            # Paket installieren
-            sudo pacman -S --noconfirm "$PACKAGE"
-            echo "$PACKAGE is now installed."
-            ;;
-        [Nn]|[Nn][Ee])
-            echo "Install from $PACKAGE canceled."
-            ;;
-        *)
-            echo "Wrong input. Type 'ja' oder 'nein'."
-            ;;
-    esac
-fi
-
     echo "wine installed successfully!"
     read -p "Press [Enter] to continue..."
 }
+
 
 
 
@@ -666,35 +720,10 @@ install_steam-gaming-platform() {
     sudo pacman -S --needed --noconfirm lib32-sdl2 lib32-alsa-lib lib32-giflib lib32-gnutls lib32-libglvnd lib32-libldap      
     sudo pacman -S --needed --noconfirm lib32-libxinerama lib32-libxcursor lib32-gnutls lib32-libva lib32-libvdpau libvdpau
     
-# Name des Pakets, das überprüft werden soll
-PACKAGE="protonup-qt"
-
-# Überprüfen, ob das Paket installiert ist
-if pacman -Qs "^$PACKAGE" > /dev/null; then
-    echo "$PACKAGE is already installed."
-else
-    read -p "$PACKAGE not installed. Protonup-qt (proton-ge install manager) install now ? (ja/nein): " antwort
-
-    case $antwort in
-        [Jj]|[Jj][Aa])
-            # Paket installieren
-            sudo pacman -S --noconfirm "$PACKAGE"
-            echo "$PACKAGE is installed."
-            ;;
-        [Nn]|[Nn][Ee])
-            echo "Installation of $PACKAGE cancelled."
-            ;;
-        *)
-            echo "Wrong input. Write 'ja' or 'nein'."
-            ;;
-    esac
-fi
-    
-
-    
     echo "steam installed successfully!"
     read -p "Press [Enter] to continue..."
 }
+
 
 
 
@@ -720,6 +749,7 @@ install_chromium_browser() {
     read -p "Press [Enter] to continue..."
 
 }
+
 
 
 # Function to install a package
@@ -764,6 +794,9 @@ install_arch_to_cachyos_converter() {
 
 }
 
+
+
+
 # Function to install a package
 install_nfs_server() {
     
@@ -780,6 +813,8 @@ usage() {
     echo "  -h, --help        Show this help message"
     echo "  -p, --path        Path to export. This is required."
 }
+
+
 
 # Parse command line arguments
 EXPORT_PATH=""
@@ -844,6 +879,8 @@ echo "sudo ufw allow from <client_ip> to any port nfs"
 
 }
 
+
+
 # Function to install a package
 install_nfs_client() {
 read -p "You need to set the mount_point and other parameters first in this script before execute!"
@@ -888,6 +925,9 @@ echo "You can now access the NFS share at $mount_point."
     read -p "Press [Enter] to continue..."
 
 }
+
+
+
 
 # Function to install a package
 install_samba() {
@@ -956,6 +996,8 @@ echo "You can access the share at: //your-server-ip/Share"
 
 }
 
+
+
 # Function to install a package
 install_virt-manager() {
    echo "Installing virt-manager..."
@@ -989,6 +1031,7 @@ install_ventoy() {
     read -p "Press [Enter] to continue..."
 
 }
+
 
 
 # Function to install a package
@@ -1035,7 +1078,7 @@ else
         [Jj]|[Jj][Aa])
             # Paket installieren
             sudo pacman -S --noconfirm "$PACKAGE"
-            sudo sed -i -e 's/#GRUB_DISABLE_OS_PROBER=true/GRUB_DISABLE_OS_PROBER=false/' /etc/default/grub
+            echo "GRUB_DISABLE_OS_PROBER=false" | sudo tee -a /etc/default/grub
             sudo os-prober
             echo "$PACKAGE installed now."
             ;;
