@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Last edit: 05.11.2024 
+# Last edit: 13.11.2024 
 
 echo ""
 echo "          You should read this script first!!
@@ -36,15 +36,14 @@ display_menu() {
     echo -e "${LIGHT_BLUE}13) Install Pamac-AUR Helper (GUI for Pacman)${NC}"
     echo -e "${LIGHT_BLUE}14) Install Chromium Browser${NC}"
     echo -e "${LIGHT_BLUE}15) Install Firefox Browser${NC}"
-    echo -e "${LIGHT_BLUE}16) Install Ventoy (USB Multiboot) ${NC}"
     echo -e "${LIGHT_BLUE}---------------------------------------------${NC}"
-    echo -e "${LIGHT_BLUE}17) Archlinux to CachyOS Converter${NC}"
-    echo -e "${LIGHT_BLUE}18) Install and config nfs (server)${NC}"
-    echo -e "${LIGHT_BLUE}19) Install and config nfs (client)${NC}"
-    echo -e "${LIGHT_BLUE}20) Install and config samba (share)${NC}"
-    echo -e "${LIGHT_BLUE}21) Install virt-manager (Virtualisation)${NC}"
-    echo -e "${LIGHT_BLUE}22) Install Libreoffice (fresh)${NC}"
-    echo -e "${LIGHT_BLUE}23) Final steps (System cleaning and Backup)${NC}"
+    echo -e "${LIGHT_BLUE}16) Archlinux to CachyOS Converter${NC}"
+    echo -e "${LIGHT_BLUE}17) Install and config nfs (server)${NC}"
+    echo -e "${LIGHT_BLUE}18) Install and config nfs (client)${NC}"
+    echo -e "${LIGHT_BLUE}19) Install and config samba (share)${NC}"
+    echo -e "${LIGHT_BLUE}20) Install virt-manager (Virtualisation)${NC}"
+    echo -e "${LIGHT_BLUE}21) Install Libreoffice (fresh)${NC}"
+    echo -e "${LIGHT_BLUE}22) Final steps (System cleaning and Backup)${NC}"
     echo -e "${LIGHT_BLUE}0) EXIT installer and reboot${NC}"
     echo -e "${LIGHT_BLUE}---------------------------------------------${NC}"
 }
@@ -60,7 +59,6 @@ install_chaotic-aur() {
     grep -q "^Color" /etc/pacman.conf || sudo sed -i -e "s/^#Color$/Color/" /etc/pacman.conf
     grep -q "ILoveCandy" /etc/pacman.conf || sudo sed -i -e "/#VerbosePkgLists/a ILoveCandy" /etc/pacman.conf
     sudo sed -i -e s"/\#VerbosePkgLists/VerbosePkgLists/"g /etc/pacman.conf
-
     sudo sed -i -e s"/\#ParallelDownloads.*/ParallelDownloads = 2/"g /etc/pacman.conf
     
     # Disable pacman cache.
@@ -99,7 +97,7 @@ install_needed-packages() {
     
     sudo pacman -S --needed --noconfirm lrzip zstd unrar unzip unace nss fuse2 fuseiso libelf upx
     sudo pacman -S --needed --noconfirm xorg-xkill xorg-xinput xorg-xrandr libwnck3 libxcomposite lib32-libxcomposite libxinerama lib32-libxrandr lib32-libxfixes
-    sudo pacman -S --needed --noconfirm hdparm sdparm gvfs gvfs-smb gvfs-nfs hwdetect sof-firmware fwupd cpupower mintstick
+    sudo pacman -S --needed --noconfirm hdparm sdparm gvfs gvfs-smb gvfs-nfs hwdetect sof-firmware fwupd cpupower 
     sudo pacman -S --needed --noconfirm xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-user-dirs
     
     #System tweaks
@@ -133,10 +131,8 @@ install_needed-packages() {
      
     yay -S --needed --noconfirm grub-hook update-grub faudio ffaudioconverter ttf-ms-win11-auto	 
     
-   # Grub kernel start parameters 
-   #sudo sed -i -e 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet rootfstype=ext4,xfs,f2fs biosdevname=0 nowatchdog noautogroup noresume default_hugepagesz=2M hugepagesz=2M hugepages=256 zswap.enabled=1 zswap.compressor=lz4 zswap.max_pool_percent=10 zswap.zpool=zsmalloc workqueue.power_efficient=1 pcie_aspm=force pci=pcie_bus_perf,nomsi,noaer rd.plymouth=0 plymouth.enable=0 plymouth.ignore-serial-consoles logo.nologo consoleblank=0 vt.global_cursor_default=0 rd.systemd.show_status=auto loglevel=0 rd.udev.log_level=0 udev.log_priority=0 enable_hangcheck=0 error_capture=0 msr.allow_writes=on audit=0 nosoftlockup selinux=0 enforcing=0 debugfs=off mce=0 mds=full,nosmt vsyscall=none no_timer_check skew_tick=1 clocksource=tsc tsc=perfect nohz=on rcupdate.rcu_expedited=1 rcu_nocb_poll irqpoll threadirqs irqaffinity=0 noirqdebug iomem=relaxed iommu.passthrough=1 kthread_cpus=0 sched_policy=1 idle=nomwait noreplace-smp noatime io_delay=none rootdelay=0 elevator=noop realloc init_on_alloc=0 init_on_free=0 pti=on no_stf_barrier mitigations=off ftrace_enabled=0 fsck.repair=no"/' /etc/default/grub
-
    
+
    # btrfs tweaks if disk is
    #sudo systemctl enable btrfs-scrub@home.timer
    #sudo systemctl enable btrfs-scrub@-.timer
@@ -344,8 +340,6 @@ install_needed-packages() {
     ## Improve PCI latency
     sudo setpci -v -d *:* latency_timer=48 >/dev/null 2>&1
     
-    echo -e "Disable GPU polling"
-    echo -e "options drm_kms_helper poll=0" | sudo tee /etc/modprobe.d/disable-gpu-polling.conf
     
     
     echo "Needed packages and System tweaks installed successfully!"
@@ -423,13 +417,15 @@ available_packages=(
     "hypnotix"
     "vmware-workstation"
     "whatsapp-for-linux"
-)
+    "mintstick"
+     
+ )
 
 # Temporäre Datei zur Speicherung der Auswahl
 tempfile=$(mktemp)
 
 # Dialog für die Auswahl der Pakete
-dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu installierenden Pakete aus:" 15 50 16 \
+dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu installierenden Pakete aus.:" 26 0 0 \
     "${available_packages[0]}" "Discord" off \
     "${available_packages[1]}" "Thunderbird Email" off \
     "${available_packages[2]}" "VLC Videoplayer" off \
@@ -437,7 +433,7 @@ dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu in
     "${available_packages[4]}" "Musikplayer Lollypop" off \
     "${available_packages[5]}" "Musikplayer Strawberry" off \
     "${available_packages[6]}" "Youtube-Downloader" off \
-    "${available_packages[7]}" "Partitionierung" off \
+    "${available_packages[7]}" "Gparted Partitionierungstool" off \
     "${available_packages[8]}" "Heroic Gamelauncher" off \
     "${available_packages[9]}" "Wine Bottle Manager" off \
     "${available_packages[10]}" "Steam Proton Manager" off \
@@ -445,7 +441,10 @@ dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu in
     "${available_packages[12]}" "Waterfox Web Browser" off \
     "${available_packages[13]}" "Hypnotix IPTV" off \
     "${available_packages[14]}" "VMware Workstation" off \
-    "${available_packages[15]}" "Whatsapp Messenger for Linux" off \
+    "${available_packages[15]}" "Whatsapp Messenger" off \
+    "${available_packages[16]}" "Libreoffice" off \
+    "${available_packages[17]}" "Mintstick USB-Tool" off \
+    
     2> "$tempfile"
 
 # Prüfen, ob der Benutzer abgebrochen hat
@@ -462,7 +461,7 @@ rm -f "$tempfile"
 # Pakete installieren
 if [[ ${#selected_packages[@]} -gt 0 ]]; then
     echo "Installiere die folgenden Pakete: ${selected_packages[*]}"
-    sudo pacman -S --noconfirm "${selected_packages[@]}"
+    sudo pacman -S --needed --noconfirm "${selected_packages[@]}"
 else
     echo "Keine Pakete ausgewählt."
 fi
@@ -603,8 +602,10 @@ install_amd-gpu-driver() {
     echo -e "GAMEMODE=1" | sudo tee -a /etc/environment &&
     echo -e "vblank_mode=1" | sudo tee -a /etc/environment
     
+    echo -e "Disable GPU polling"
+    echo -e "options drm_kms_helper poll=0" | sudo tee /etc/modprobe.d/disable-gpu-polling.conf
 
-
+    
     echo "amd-gpu-driver installed successfully!"
     read -p "Press [Enter] to continue..."
 }
@@ -661,6 +662,9 @@ install_nvidia-gpu-driver() {
             echo -e "GAMEMODE=1" | sudo tee -a /etc/environment &&
             echo -e "vblank_mode=1" | sudo tee -a /etc/environment
 
+
+    echo -e "Disable GPU polling"
+    echo -e "options drm_kms_helper poll=0" | sudo tee /etc/modprobe.d/disable-gpu-polling.conf
 
     echo "nvidia-gpu-driver installed successfully!"
     read -p "Press [Enter] to continue..."
@@ -1021,17 +1025,6 @@ install_libreoffice() {
 }
 
 
-# Function to install a package
-install_ventoy() {
-    
-    echo "Starting install ventoy..."
-   sudo pacman -S --needed --noconfirm ventoy-bin
- 
-    echo "ventoy installed successfully!"
-    read -p "Press [Enter] to continue..."
-
-}
-
 
 
 # Function to install a package
@@ -1124,14 +1117,13 @@ while true; do
        13) install_aur-helper ;;
        14) install_chromium_browser ;;
        15) install_firefox_browser ;;
-       16) install_ventoy ;;
-       17) install_arch_to_cachyos_converter ;;
-       18) install_nfs_server ;;  
-       19) install_nfs_client ;;  
-       20) install_samba ;;
-       21) install_virt-manager ;; 
-       22) install_libreoffice ;;  
-       23) install_final-steps ;;  
+       16) install_arch_to_cachyos_converter ;;
+       17) install_nfs_server ;;  
+       18) install_nfs_client ;;  
+       19) install_samba ;;
+       20) install_virt-manager ;; 
+       21) install_libreoffice ;;  
+       22) install_final-steps ;;  
          0) echo "Exiting..."; sudo reboot ;;
         *) echo "Invalid option! Please try again." ;;
     esac
