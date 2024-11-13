@@ -404,7 +404,8 @@ install_docker() {
 
 # Function to install a package
 install_programs() {
-    # Eine Liste von Paketen, die zur Installation verfügbar sind
+#!/bin/bash
+
 available_packages=(
     "discord"
     "thunderbird"
@@ -428,7 +429,7 @@ available_packages=(
 tempfile=$(mktemp)
 
 # Dialog für die Auswahl der Pakete
-dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu installierenden Pakete aus:" 15 50 8 \
+dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu installierenden Pakete aus:" 15 50 16 \
     "${available_packages[0]}" "Discord" off \
     "${available_packages[1]}" "Thunderbird Email" off \
     "${available_packages[2]}" "VLC Videoplayer" off \
@@ -444,14 +445,14 @@ dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu in
     "${available_packages[12]}" "Waterfox Web Browser" off \
     "${available_packages[13]}" "Hypnotix IPTV" off \
     "${available_packages[14]}" "VMware Workstation" off \
-    "${available_packages[14]}" "Whatsapp Messenger for Linux" off \		
+    "${available_packages[15]}" "Whatsapp Messenger for Linux" off \
     2> "$tempfile"
 
-# Wenn der Benutzer abbricht
+# Prüfen, ob der Benutzer abgebrochen hat
 if [ $? -ne 0 ]; then
     echo "Installation abgebrochen."
     rm -f "$tempfile"
-    
+    exit 1  # Besser Exit-Status zurückgeben
 fi
 
 # Pakete aus der temporären Datei lesen
@@ -461,12 +462,11 @@ rm -f "$tempfile"
 # Pakete installieren
 if [[ ${#selected_packages[@]} -gt 0 ]]; then
     echo "Installiere die folgenden Pakete: ${selected_packages[*]}"
-    sudo pacman -S --needed --noconfirm "${selected_packages[@]}"
+    sudo pacman -S --noconfirm "${selected_packages[@]}"
 else
     echo "Keine Pakete ausgewählt."
 fi
 
-    
     echo "programs installed successfully!"
     read -p "Press [Enter] to continue..."
 }
