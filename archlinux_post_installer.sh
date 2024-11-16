@@ -95,7 +95,7 @@ install_needed-packages() {
     sudo pacman -S --needed --noconfirm dbus-broker dkms kmod amd-ucode pacman-contrib bash-completion yay samba bind ethtool rsync timeshift timeshift-autosnap
     sudo pacman -S --needed --noconfirm gufw gsmartcontrol mtools xfsdump f2fs-tools udftools gnome-disk-utility
     
-    sudo pacman -S --needed --noconfirm lrzip zstd unrar unzip unace nss fuse2 fuseiso libelf upx
+    sudo pacman -S --needed --noconfirm lrzip zstd unrar unzip unace nss fuse2 fuseiso libelf upx python python-reportlab tcl tk python-pipx
     sudo pacman -S --needed --noconfirm xorg-xkill xorg-xinput xorg-xrandr libwnck3 libxcomposite lib32-libxcomposite libxinerama lib32-libxrandr lib32-libxfixes
     sudo pacman -S --needed --noconfirm hdparm sdparm gvfs gvfs-smb gvfs-nfs hwdetect sof-firmware fwupd cpupower 
     sudo pacman -S --needed --noconfirm xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-user-dirs
@@ -163,8 +163,12 @@ install_needed-packages() {
     sudo ufw default allow outgoing
     sudo systemctl enable ufw
 
+    # Update the library cache
+    sudo ldconfig
    
-    # Environment variables
+    
+
+# Environment variables
     echo -e "
     CPU_LIMIT=0
     GPU_USE_SYNC_OBJECTS=1

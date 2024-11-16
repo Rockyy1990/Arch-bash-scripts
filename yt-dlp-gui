@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+
+import tkinter as tk
+from tkinter import messagebox
+from tkinter import ttk
+import subprocess
+import threading
+import re
+
+def download_video():
+    url = url_entry.get()
+    if not url:
+        messagebox.showerror("Error", "Please enter a URL")
+        return
+
+    # Start the download process in a new thread to keep GUI responsive
+    threading.Thread(target=run_yt_dlp, args=(url,)).start()
+
+def run_yt_dlp(url):
+    # Prepare the command to run yt-dlp with the progress output option
+    command = ["yt-dlp", "-f", "best", "-o", "%(title)s.%(ext)s", url]
+    
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
+    # Reset the progress bar
+    progress_bar['value'] = 0
+    progress_bar['maximum'] = 100
+
+    # Regular expression to match the download progress output from yt-dlp
+    regex = re.compile(r'(\d{1,3}(\.\d{1,2})?)%')
+
+    while True:
+        output = process.stdout.readline()
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            # Check for percentage in output
+            match = regex.search(output)
+            if match:
+                progress_value = float(match.group(1))
+                progress_bar['value'] = progress_value
+                root.update_idletasks()  # Update the GUI
+
+    process.stdout.close()
+    process.wait()
+    # Completion message
+    messagebox.showinfo("Success", "Download completed!")
+    progress_bar['value'] = 100  # Set to 100% when done
+
+# Create main window
+root = tk.Tk()
+root.title("yt-dlp GUI")
+root.geometry("400x300")
+
+# URL Label and Entry
+url_label = tk.Label(root, text="Enter Video URL:")
+url_label.pack(pady=10)
+
+url_entry = tk.Entry(root, width=50)
+url_entry.pack(pady=5)
+
+# Progress Bar
+progress_bar = ttk.Progressbar(root, orient=tk.HORIZONTAL, length=300, mode='determinate')
+progress_bar.pack(pady=20)
+
+# Download Button
+download_button = tk.Button(root, text="Download", command=download_video)
+download_button.pack(pady=10)
+
+# Copy/Paste function
+def paste_url():
+    url_entry.delete(0, tk.END)  # Clear the entry
+    url_entry.insert(0, root.clipboard_get())  # Paste from clipboard
+
+# Paste Button
+paste_button = tk.Button(root, text="Paste URL", command=paste_url)
+paste_button.pack(pady=5)
+
+# Run the application
+root.mainloop()
