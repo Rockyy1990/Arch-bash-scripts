@@ -399,6 +399,8 @@ install_docker() {
 # Function to install a package
 install_programs() {
 
+#!/bin/bash
+
 available_packages=(
     "discord"
     "thunderbird"
@@ -417,54 +419,58 @@ available_packages=(
     "grub-customizer"
     "whatsapp-for-linux"
     "mintstick"
-	"apple-fonts"
+    "apple-fonts"
     "mcmojave-circle-icon-theme-git"
-	"gsmartcontrol"
-	"fwupd"
- )
+    "gsmartcontrol"
+    "fwupd"
+)
 
-# Temporäre Datei zur Speicherung der Auswahl
+# Temporary file for storing the selection
 tempfile=$(mktemp)
+trap 'rm -f "$tempfile"' EXIT  # Ensure tempfile is removed on exit
 
-# Dialog für die Auswahl der Pakete
-dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu installierenden Pakete aus.:" 28 0 0 \
-    "${available_packages[0]}" "Discord" off \
-    "${available_packages[1]}" "Thunderbird Email" off \
-    "${available_packages[2]}" "VLC Videoplayer" off \
-    "${available_packages[3]}" "Soundconverter" off \
-    "${available_packages[4]}" "Musikplayer Lollypop" off \
-    "${available_packages[5]}" "Musikplayer Strawberry" off \
-    "${available_packages[6]}" "Youtube-Downloader" off \
-    "${available_packages[7]}" "Gparted Partitionierungstool" off \
-    "${available_packages[8]}" "Heroic Gamelauncher" off \
-    "${available_packages[9]}" "Wine Bottle Manager" off \
-    "${available_packages[10]}" "Steam Proton Manager" off \
-    "${available_packages[11]}" "OBS-Studio" off \
-    "${available_packages[12]}" "Waterfox Web Browser" off \
-    "${available_packages[13]}" "Hypnotix IPTV" off \
-    "${available_packages[14]}" "Grub-Customizer" off \
-    "${available_packages[15]}" "Whatsapp Messenger" off \
-    "${available_packages[16]}" "Mintstick USB-Tool" off \
-    "${available_packages[17]}" "Apple-fonts" off \
-    "${available_packages[18]}" "Mcmojave-Circle-Icons" off \
-    "${available_packages[19]}" "SMART Control GUI" off \
-    "${available_packages[20]}" "Firmware Updater" off \
-	
-    
-    2> "$tempfile"
+# Create dialog options
+dialog_options=()
+for package in "${available_packages[@]}"; do
+    case $package in
+        "discord") desc="Discord" ;;
+        "thunderbird") desc="Thunderbird Email" ;;
+        "vlc") desc="VLC Videoplayer" ;;
+        "soundconverter") desc="Soundconverter" ;;
+        "lollypop") desc="Musikplayer Lollypop" ;;
+        "strawberry") desc="Musikplayer Strawberry" ;;
+        "yt-dlp") desc="Youtube-Downloader" ;;
+        "gparted") desc="Gparted Partitionierungstool" ;;
+        "heroic-games-launcher-bin") desc="Heroic Gamelauncher" ;;
+        "bottles") desc="Wine Bottle Manager" ;;
+        "protonup-qt") desc="Steam Proton Manager" ;;
+        "obs-studio") desc="OBS-Studio" ;;
+        "waterfox-bin") desc="Waterfox Web Browser" ;;
+        "hypnotix") desc="Hypnotix IPTV" ;;
+        "grub-customizer") desc="Grub-Customizer" ;;
+        "whatsapp-for-linux") desc="Whatsapp Messenger" ;;
+        "mintstick") desc="Mintstick USB-Tool" ;;
+        "apple-fonts") desc="Apple-fonts" ;;
+        "mcmojave-circle-icon-theme-git") desc="Mcmojave-Circle-Icons" ;;
+        "gsmartcontrol") desc="SMART Control GUI" ;;
+        "fwupd") desc="Firmware Updater" ;;
+    esac
+    dialog_options+=("$package" "$desc" off)
+done
 
-# Prüfen, ob der Benutzer abgebrochen hat
+# Dialog for package selection
+dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu installierenden Pakete aus.:" 28 0 0 "${dialog_options[@]}" 2> "$tempfile"
+
+# Check if the user canceled
 if [ $? -ne 0 ]; then
     echo "Installation abgebrochen."
-    rm -f "$tempfile"
-    exit 1  # Besser Exit-Status zurückgeben
+    exit 1  # Return better exit status
 fi
 
-# Pakete aus der temporären Datei lesen
+# Read selected packages from the temporary file
 selected_packages=($(<"$tempfile"))
-rm -f "$tempfile"
 
-# Pakete installieren
+# Install packages
 if [[ ${#selected_packages[@]} -gt 0 ]]; then
     echo "Installiere die folgenden Pakete: ${selected_packages[*]}"
     sudo pacman -S --needed --noconfirm "${selected_packages[@]}"
