@@ -1,15 +1,15 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Last edit: 13.11.2024 
+# Last edit: 05.12.2024 
 
 echo ""
-echo "          You should read this script first!!
+echo "         !!You should read this script first!!
 "
-echo "                (The AUR Helper is yay)
+echo "           (The default AUR Helper is yay)
 "
 echo ""
 read -p "Its recommend to install the chaotic aur repo for some packeges.
-                   Press any key to continue."
+                     Press any key to continue."
 echo ""
 
 # Function to display the menu
@@ -41,7 +41,7 @@ display_menu() {
     echo -e "${LIGHT_BLUE}17) Install and config nfs (server)${NC}"
     echo -e "${LIGHT_BLUE}18) Install and config nfs (client)${NC}"
     echo -e "${LIGHT_BLUE}19) Install and config samba (share)${NC}"
-    echo -e "${LIGHT_BLUE}20) Install virt-manager (Virtualisation)${NC}"
+    echo -e "${LIGHT_BLUE}20) Install VMware Workstation (Virtualisation)${NC}"
     echo -e "${LIGHT_BLUE}21) Install Libreoffice (fresh)${NC}"
     echo -e "${LIGHT_BLUE}22) Final steps (System cleaning and Backup)${NC}"
     echo -e "${LIGHT_BLUE}0) EXIT installer and reboot${NC}"
@@ -93,25 +93,32 @@ install_needed-packages() {
     echo -e "Installing Needed-packages and make system tweaks.."
     echo ""
     sudo pacman -S --needed --noconfirm dbus-broker dkms kmod amd-ucode pacman-contrib bash-completion yay samba bind ethtool rsync timeshift timeshift-autosnap
-    sudo pacman -S --needed --noconfirm gufw gsmartcontrol mtools xfsdump f2fs-tools udftools gnome-disk-utility
+    sudo pacman -S --needed --noconfirm gufw mtools dosfstools xfsdump btrfs-progs f2fs-tools udftools gnome-disk-utility lrzip zstd unrar unzip unace nss fuse2 fuseiso libelf upx
     
-    sudo pacman -S --needed --noconfirm lrzip zstd unrar unzip unace nss fuse2 fuseiso libelf upx python python-reportlab tcl tk python-pipx
-    sudo pacman -S --needed --noconfirm xorg-xkill xorg-xinput xorg-xrandr libwnck3 libxcomposite lib32-libxcomposite libxinerama lib32-libxrandr lib32-libxfixes
-    sudo pacman -S --needed --noconfirm hdparm sdparm gvfs gvfs-smb gvfs-nfs hwdetect sof-firmware fwupd cpupower 
+    # Complet x11 support
+	sudo pacman -S --needed --noconfirm xorg-server-xvfb xorg-xkill xorg-xinput xorg-xrandr libwnck3 libxcomposite lib32-libxcomposite libxinerama lib32-libxrandr lib32-libxfixes
+    
+	# Additional System tools and libraries
+	sudo pacman -S --needed --noconfirm hdparm sdparm gvfs gvfs-smb gvfs-nfs hwdetect sof-firmware cpupower 
     sudo pacman -S --needed --noconfirm xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-user-dirs
     
-    #System tweaks
+    # Full python support
+	sudo pacman -S --needed --noconfirm python python-extras python-reportlab python-opengl python-glfw python-pyxdg python-pywayland python-cachy tcl tk 
+	
+	# System tweaks
     sudo pacman -S --needed --noconfirm irqbalance memavaild nohang ananicy-cpp
     
-    # Fonts
+    # needed packages for various variables (sysctl variables etc)
+	sudo pacman -S --needed --noconfirm procps-ng iproute2 iotop nmon quota-tools lm_sensors lz4 pciutils libpciaccess
+	
+	# Fonts
     sudo pacman -S --needed --noconfirm ttf-dejavu ttf-freefont ttf-liberation ttf-droid terminus-font 
-    sudo pacman -S --needed --noconfirm noto-fonts ttf-ubuntu-font-family ttf-roboto ttf-roboto-mono apple-fonts
+    sudo pacman -S --needed --noconfirm noto-fonts ttf-ubuntu-font-family ttf-roboto ttf-roboto-mono 
     
-    # Themes
+    # Mint Icons and theme
     sudo pacman -S --needed --noconfirm mint-l-icons mint-y-icons mint-l-theme
-    sudo pacman -S --needed --noconfirm mcmojave-circle-icon-theme-git
-
     
+
     echo -e "Set the theme and icon theme for XFCE4 with tweaks"
     xfconf-query -c xsettings -p /Net/ThemeName -n -s "Mint-L-Darker"
     xfconf-query -c xsettings -p /Net/IconThemeName -n -s "Mint-L"
@@ -126,28 +133,16 @@ install_needed-packages() {
     xfconf-query -c xfce4-session -p /startup/ssh-agent/enabled -n -t bool -s false
 
 
+
     echo -e "Installing make-tools..."
     sudo pacman -S --needed --noconfirm base-devel binutils git fakeroot gcc clang llvm bc meson ninja rust automake autoconf ccache
      
-    yay -S --needed --noconfirm grub-hook update-grub faudio ffaudioconverter ttf-ms-win11-auto	 
+    yay -S --needed --noconfirm grub-hook update-grub faudio ffaudioconverter ttf-ms-win10-auto 
     
    
 
-   # btrfs tweaks if disk is
-   #sudo systemctl enable btrfs-scrub@home.timer
-   #sudo systemctl enable btrfs-scrub@-.timer
-   #sudo btrfs property set / compression lz4
-   #sudo btrfs property set /home compression lz4
-   #sudo btrfs filesystem defragment -r -v -clz4 /
-   #sudo chattr +c /
-   #sudo btrfs filesystem defragment -r -v -clz4 /home
-   #sudo chattr +c /home
-   #sudo btrfs balance start -musage=0 -dusage=50 /
-   #sudo btrfs balance start -musage=0 -dusage=50 /home
-   #sudo chattr +C /swapfile
-
-    
-# Enable the services
+   
+    # Enable the services
     sudo systemctl enable --now cpupower.service
     sudo cpupower frequency-set -g performance
     sudo systemctl enable --now dbus-broker.service
@@ -187,7 +182,8 @@ install_needed-packages() {
     LESSHISTFILE=-
     LESSHISTSIZE=0
     LESSSECURE=1
-    PAGER=less" | sudo tee -a /etc/environment
+    PAGER=less
+	" | sudo tee -a /etc/environment
     
     
     # BFQ scheduler
@@ -402,7 +398,6 @@ install_docker() {
 
 # Function to install a package
 install_programs() {
-#!/bin/bash
 
 available_packages=(
     "discord"
@@ -419,17 +414,20 @@ available_packages=(
     "obs-studio"
     "waterfox-bin"
     "hypnotix"
-    "vmware-workstation"
+    "grub-customizer"
     "whatsapp-for-linux"
     "mintstick"
-     
+	"apple-fonts"
+    "mcmojave-circle-icon-theme-git"
+	"gsmartcontrol"
+	"fwupd"
  )
 
 # Temporäre Datei zur Speicherung der Auswahl
 tempfile=$(mktemp)
 
 # Dialog für die Auswahl der Pakete
-dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu installierenden Pakete aus.:" 26 0 0 \
+dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu installierenden Pakete aus.:" 28 0 0 \
     "${available_packages[0]}" "Discord" off \
     "${available_packages[1]}" "Thunderbird Email" off \
     "${available_packages[2]}" "VLC Videoplayer" off \
@@ -444,10 +442,14 @@ dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu in
     "${available_packages[11]}" "OBS-Studio" off \
     "${available_packages[12]}" "Waterfox Web Browser" off \
     "${available_packages[13]}" "Hypnotix IPTV" off \
-    "${available_packages[14]}" "VMware Workstation" off \
+    "${available_packages[14]}" "Grub-Customizer" off \
     "${available_packages[15]}" "Whatsapp Messenger" off \
-    "${available_packages[16]}" "Libreoffice" off \
-    "${available_packages[17]}" "Mintstick USB-Tool" off \
+    "${available_packages[16]}" "Mintstick USB-Tool" off \
+    "${available_packages[17]}" "Apple-fonts" off \
+	"${available_packages[18]}" "Mcmojave-Circle-Icons" off \
+	"${available_packages[19]}" "SMART Control GUI" off \
+	"${available_packages[20]}" "Firmware Updater" off \
+	
     
     2> "$tempfile"
 
@@ -482,7 +484,8 @@ install_pipewire-full() {
     sudo pacman -S --needed --noconfirm pipewire pipewire-alsa pipewire-pulse pipewire-zeroconf pipewire-v4l2 gst-plugin-pipewire wireplumber 
     sudo pacman -S --needed --noconfirm pavucontrol rtkit alsa-firmware alsa-plugins alsa-card-profiles alsa-lib lib32-alsa-lib
     
-    sudo pacman -S --needed --noconfirm lame flac opus ffmpeg a52dec x264 x265 libvpx libvorbis libogg speex libdca libfdk-aac
+    # Multimeda Codecs
+	sudo pacman -S --needed --noconfirm lame flac opus ffmpeg a52dec x264 x265 libvpx libvorbis libogg speex libdca libfdk-aac
     sudo pacman -S --needed --noconfirm gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gstreamer-vaapi gst-libav
     sudo pacman -S --needed --noconfirm twolame libmad libxv libtheora libmpeg2 faac faad2 libdca libdv libavif libheif xvidcore
     echo "hrtf = true" | sudo tee -a  ~/.alsoftrc
@@ -548,12 +551,12 @@ install_pipewire-full() {
 # Function to install a package
 install_amd-gpu-driver() {
     echo "Installing amd-gpu-driver..."
-    sudo pacman -S --needed --noconfirm xf86-video-amdgpu mesa lib32-mesa  mesa-vdpau lib32-mesa-vdpau libva-mesa-driver lib32-libva-mesa-driver
-    sudo pacman -S --needed --noconfirm adriconf opencl-icd-loader ocl-icd lib32-ocl-icd rocm-opencl-runtime
+    sudo pacman -S --needed --noconfirm xf86-video-amdgpu mesa lib32-mesa glu lib32-glu libvdpau-va-gl adriconf
+    sudo pacman -S --needed --noconfirm opencl-icd-loader ocl-icd lib32-ocl-icd rocm-opencl-runtime
     
     # Install Vulkan drivers
-    sudo pacman -S --needed --noconfirm vulkan-radeon lib32-vulkan-radeon vulkan-swrast vulkan-icd-loader lib32-vulkan-icd-loader
-    sudo pacman -S --needed --noconfirm vulkan-validation-layers vulkan-mesa-layers vulkan-headers
+    sudo pacman -S --needed --noconfirm vulkan-radeon lib32-vulkan-radeon vulkan-swrast vulkan-icd-loader lib32-vulkan-icd-loader 
+    sudo pacman -S --needed --noconfirm vulkan-validation-layers vulkan-mesa-layers lib32-vulkan-mesa-layers vulkan-headers
     
     echo "
     KERNEL=="card0", SUBSYSTEM=="drm", DRIVERS=="amdgpu", ATTR{device/power_dpm_state}="performance"
@@ -1007,16 +1010,11 @@ echo "You can access the share at: //your-server-ip/Share"
 
 
 # Function to install a package
-install_virt-manager() {
-   echo "Installing virt-manager..."
+install_vmware_workstation() {
+   echo "Installing vmware..."
    sudo pacman -Sy
-   sudo pacman -S --needed --noconfirm virt-manager qemu libvirt dnsmasq bridge-utils
-   sudo systemctl enable libvirtd.service
-   sudo systemctl start libvirtd.service
-   sudo virsh net-autostart default
-   sudo virsh net-start default
-   sudo usermod -aG libvirt $(whoami)
-   echo "virt-manager installed successfully!"
+   
+   echo "VMware installed successfully!"
    read -p "Press [Enter] to continue..."
 }
 
@@ -1125,7 +1123,7 @@ while true; do
        17) install_nfs_server ;;  
        18) install_nfs_client ;;  
        19) install_samba ;;
-       20) install_virt-manager ;; 
+       20) install_wmware_workstation ;; 
        21) install_libreoffice ;;  
        22) install_final-steps ;;  
          0) echo "Exiting..."; sudo reboot ;;
