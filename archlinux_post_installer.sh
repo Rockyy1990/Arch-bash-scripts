@@ -96,22 +96,22 @@ install_needed-packages() {
     sudo pacman -S --needed --noconfirm gufw mtools dosfstools xfsdump btrfs-progs f2fs-tools udftools gnome-disk-utility lrzip zstd unrar unzip unace nss fuse2 fuseiso libelf upx
     
     # Complet x11 support
-	sudo pacman -S --needed --noconfirm xorg-server-xvfb xorg-xkill xorg-xinput xorg-xrandr libwnck3 libxcomposite lib32-libxcomposite libxinerama lib32-libxrandr lib32-libxfixes
+    sudo pacman -S --needed --noconfirm xorg-server-xvfb xorg-xkill xorg-xinput xorg-xrandr libwnck3 libxcomposite lib32-libxcomposite libxinerama lib32-libxrandr lib32-libxfixes
     
-	# Additional System tools and libraries
-	sudo pacman -S --needed --noconfirm hdparm sdparm gvfs gvfs-smb gvfs-nfs hwdetect sof-firmware cpupower 
+    # Additional System tools and libraries
+    sudo pacman -S --needed --noconfirm hdparm sdparm gvfs gvfs-smb gvfs-nfs hwdetect sof-firmware cpupower 
     sudo pacman -S --needed --noconfirm xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-user-dirs
     
     # Full python support
-	sudo pacman -S --needed --noconfirm python python-extras python-reportlab python-opengl python-glfw python-pyxdg python-pywayland python-cachy tcl tk 
+    sudo pacman -S --needed --noconfirm python python-extras python-reportlab python-opengl python-glfw python-pyxdg python-pywayland python-cachy tcl tk 
 	
-	# System tweaks
+    # System tweaks
     sudo pacman -S --needed --noconfirm irqbalance memavaild nohang ananicy-cpp
     
     # needed packages for various variables (sysctl variables etc)
-	sudo pacman -S --needed --noconfirm procps-ng iproute2 iotop nmon quota-tools lm_sensors lz4 pciutils libpciaccess
+    sudo pacman -S --needed --noconfirm procps-ng iproute2 iotop nmon quota-tools lm_sensors lz4 pciutils libpciaccess
 	
-	# Fonts
+    # Fonts
     sudo pacman -S --needed --noconfirm ttf-dejavu ttf-freefont ttf-liberation ttf-droid terminus-font 
     sudo pacman -S --needed --noconfirm noto-fonts ttf-ubuntu-font-family ttf-roboto ttf-roboto-mono 
     
