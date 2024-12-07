@@ -412,7 +412,6 @@ available_packages=(
     "gparted"
     "heroic-games-launcher-bin"
     "bottles"
-    "protonup-qt"
     "obs-studio"
     "waterfox-bin"
     "hypnotix"
@@ -443,7 +442,6 @@ for package in "${available_packages[@]}"; do
         "gparted") desc="Gparted Partitionierungstool" ;;
         "heroic-games-launcher-bin") desc="Heroic Gamelauncher" ;;
         "bottles") desc="Wine Bottle Manager" ;;
-        "protonup-qt") desc="Steam Proton Manager" ;;
         "obs-studio") desc="OBS-Studio" ;;
         "waterfox-bin") desc="Waterfox Web Browser" ;;
         "hypnotix") desc="Hypnotix IPTV" ;;
@@ -491,7 +489,7 @@ install_pipewire-full() {
     sudo pacman -S --needed --noconfirm pavucontrol rtkit alsa-firmware alsa-plugins alsa-card-profiles alsa-lib lib32-alsa-lib
     
     # Multimeda Codecs
-	sudo pacman -S --needed --noconfirm lame flac opus ffmpeg a52dec x264 x265 libvpx libvorbis libogg speex libdca libfdk-aac
+    sudo pacman -S --needed --noconfirm lame flac opus ffmpeg a52dec x264 x265 libvpx libvorbis libogg speex libdca libfdk-aac
     sudo pacman -S --needed --noconfirm gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gstreamer-vaapi gst-libav
     sudo pacman -S --needed --noconfirm twolame libmad libxv libtheora libmpeg2 faac faad2 libdca libdv libavif libheif xvidcore
     echo "hrtf = true" | sudo tee -a  ~/.alsoftrc
@@ -736,6 +734,10 @@ install_steam-gaming-platform() {
 
     sudo pacman -S --needed --noconfirm lib32-sdl2 lib32-alsa-lib lib32-giflib lib32-gnutls lib32-libglvnd lib32-libldap      
     sudo pacman -S --needed --noconfirm lib32-libxinerama lib32-libxcursor lib32-gnutls lib32-libva lib32-libvdpau libvdpau
+ 
+    echo ""
+    echo "Do you wont to install the Proton Manager Protonup-Qt ?"
+    sudo pacman -S protonup-qt
     
     echo "steam installed successfully!"
     read -p "Press [Enter] to continue..."
