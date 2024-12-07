@@ -41,7 +41,7 @@ display_menu() {
     echo -e "${LIGHT_BLUE}17) Install and config nfs (server)${NC}"
     echo -e "${LIGHT_BLUE}18) Install and config nfs (client)${NC}"
     echo -e "${LIGHT_BLUE}19) Install and config samba (share)${NC}"
-    echo -e "${LIGHT_BLUE}20) Install VMware Workstation (Virtualisation)${NC}"
+    echo -e "${LIGHT_BLUE}20) Install Gnome-Boxes (Virtualisation)${NC}"
     echo -e "${LIGHT_BLUE}21) Install Libreoffice (fresh)${NC}"
     echo -e "${LIGHT_BLUE}22) Final steps (System cleaning and Backup)${NC}"
     echo -e "${LIGHT_BLUE}0) EXIT installer and reboot${NC}"
@@ -422,6 +422,9 @@ available_packages=(
     "mcmojave-circle-icon-theme-git"
     "gsmartcontrol"
     "fwupd"
+    "kate"
+    "gnome-system-monitor"
+    "abiword"
 )
 
 # Temporary file for storing the selection
@@ -452,6 +455,9 @@ for package in "${available_packages[@]}"; do
         "mcmojave-circle-icon-theme-git") desc="Mcmojave-Circle-Icons" ;;
         "gsmartcontrol") desc="SMART Control GUI" ;;
         "fwupd") desc="Firmware Updater" ;;
+        "kate") desc="Advanced Editor" ;;
+        "gnome-system-monitor") desc="System-Monitor" ;;
+        "abiword") desc="Abiword Texteditor" ;;
     esac
     dialog_options+=("$package" "$desc" off)
 done
@@ -1018,72 +1024,21 @@ echo "You can access the share at: //your-server-ip/Share"
 
 
 # Function to install a package
-install_vmware_workstation() {
+install_gnome_boxes() {
    echo "Installing vmware..."
    sudo pacman -Sy
-   read -p "The chaotic repo need to be installed. Press any key to continue.."
+   read -p "This installs Gnome-Boxes. Press any key to continue.."
 
-sudo pacman -S --needed --noconfirm fuse2 gtkmm linux-headers pcsclite libcanberra 
+sudo pacman -S --needed --noconfirm gnome-boxes qemu libvirt virt-manager
 
-sudo pacman -S --needed --noconfirm vmware-workstation
+sudo systemctl enable libvirtd
 
-sudo systemctl enable vmware-networks.service
-
-sudo systemctl enable vmware-usbarbitrator.service
+sudo systemctl start libvirtd 
 
 
-# Enabling networking
-cat <<EOF | sudo tee /etc/systemd/system/vmware-networks-server.service
-[Unit]
-Description=VMware Networks
-Wants=vmware-networks-configuration.service
-After=vmware-networks-configuration.service
-
-[Service]
-Type=forking
-ExecStartPre=-/sbin/modprobe vmnet
-ExecStart=/usr/bin/vmware-networks --start
-ExecStop=/usr/bin/vmware-networks --stop
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl enable vmware-networks-server.service
-
-
-# Create and enable the vmware.service
-cat <<EOF | sudo tee /etc/systemd/system/vmware.service
-[Unit]
-Description=VMware daemon
-Requires=vmware-usbarbitrator.service
-Before=vmware-usbarbitrator.service
-After=network.target
-
-[Service]
-ExecStart=/etc/init.d/vmware start
-ExecStop=/etc/init.d/vmware stop
-PIDFile=/var/lock/subsys/vmware
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl enable vmware.service
-
-# Reload services and start vmware.service and usbarbitrator.service
-sudo systemctl daemon-reload
-sudo systemctl start vmware.service vmware-usbarbitrator.service 
-
-# Recompiling VMware kernel modules
-sudo  vmware-modconfig --console --install-all
-
-# Load the VMware modules
-sudo modprobe -a vmw_vmci vmmon
 
    
-   echo "VMware installed successfully!"
+   echo "Gnome-Boxes installed successfully!"
    read -p "Press [Enter] to continue..."
 }
 
@@ -1192,7 +1147,7 @@ while true; do
        17) install_nfs_server ;;  
        18) install_nfs_client ;;  
        19) install_samba ;;
-       20) install_vmware_workstation ;; 
+       20) install_gnome_boxes ;; 
        21) install_libreoffice ;;  
        22) install_final-steps ;;  
          0) echo "Exiting..."; sudo reboot ;;
