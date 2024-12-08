@@ -1029,16 +1029,63 @@ install_gnome_boxes() {
    sudo pacman -Sy
    read -p "This installs Gnome-Boxes. Press any key to continue.."
 
-sudo pacman -S --needed --noconfirm gnome-boxes qemu libvirt virt-manager
 
-sudo systemctl enable libvirtd
+read -p "Enable IOMMU: Make sure IOMMU is enabled in your BIOS/UEFI settings.
 
-sudo systemctl start libvirtd 
+Kernel Parameters: Add the following to your kernel parameters in /etc/default/grub:
+
+    For Intel: intel_iommu=on
+    For AMD: amd_iommu=on
+
+Then run sudo grub-mkconfig -o /boot/grub/grub.cfg and reboot.
+
+    If the parameters already set than press any key to continue.
+
+"
+sudo pacman -S --needed --noconfirm gnome-boxes qemu virt-manager libvirt dnsmasq vde2 bridge-utils openbsd-netcat
+
+sudo systemctl enable --now libvirtd
+
+# Add current user to the libvirt group
+USER=$(whoami)
+
+echo "Adding user $USER to the libvirt group..."
+sudo usermod -aG libvirt $USER
 
 
+# Configure default network for libvirt
 
+echo "Configuring default network..."
+
+sudo virsh net-start default
+sudo virsh net-autostart default
+
+
+# Check if IOMMU is enabled (optional)
+if grep -q "intel_iommu=on" /proc/cmdline || grep -q "amd_iommu=on" /proc/cmdline; then
+
+    echo "IOMMU is enabled."
+
+else
+
+    echo "IOMMU is not enabled. Please enable it in your BIOS/UEFI settings and add the appropriate kernel parameters."
+
+fi
+
+# Display the status of libvirt services
+echo "Checking the status of libvirt services..."
+
+systemctl status libvirtd
+
+
+# Display the current user groups
+echo "Current user groups for $USER:"
+groups $USER
+
+echo "Libvirt installation and configuration complete."
+echo "Please log out and log back in for group changes to take effect."
    
-   echo "Gnome-Boxes installed successfully!"
+   echo "Gnome-Boxes and libvirt installed successfully!"
    read -p "Press [Enter] to continue..."
 }
 
