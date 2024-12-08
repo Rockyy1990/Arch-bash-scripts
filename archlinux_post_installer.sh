@@ -1042,7 +1042,7 @@ Then run sudo grub-mkconfig -o /boot/grub/grub.cfg and reboot.
     If the parameters already set than press any key to continue.
 
 "
-sudo pacman -S --needed --noconfirm gnome-boxes qemu virt-manager libvirt dnsmasq vde2 bridge-utils openbsd-netcat
+sudo pacman -S --needed --noconfirm gnome-boxes qemu virt-manager libvirt libguestfs dnsmasq vde2 bridge-utils openbsd-netcat
 
 sudo systemctl enable --now libvirtd
 
