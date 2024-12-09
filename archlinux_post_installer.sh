@@ -1042,7 +1042,10 @@ Then run sudo grub-mkconfig -o /boot/grub/grub.cfg and reboot.
     If the parameters already set than press any key to continue.
 
 "
-sudo pacman -S --needed --noconfirm gnome-boxes qemu virt-manager libvirt libguestfs spice-vdagent dnsmasq vde2 bridge-utils openbsd-netcat
+sudo pacman -S --needed --noconfirm virt-manager libvirt qemu qemu-tools libguestfs vulkan-virtio spice-vdagent dnsmasq vde2 bridge-utils openbsd-netcat
+
+echo " The tpm packages are needed for an win11 vm"
+sudo pacman -S --needed tpm2-tools tpm2-tss swtpm python-tpm2-pytss
 
 sudo systemctl enable --now libvirtd
 
