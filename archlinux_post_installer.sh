@@ -41,7 +41,7 @@ display_menu() {
     echo -e "${LIGHT_BLUE}17) Install and config nfs (server)${NC}"
     echo -e "${LIGHT_BLUE}18) Install and config nfs (client)${NC}"
     echo -e "${LIGHT_BLUE}19) Install and config samba (share)${NC}"
-    echo -e "${LIGHT_BLUE}20) Install Gnome-Boxes (Virtualisation)${NC}"
+    echo -e "${LIGHT_BLUE}20) Install Virt-Manager (Virtualisation)${NC}"
     echo -e "${LIGHT_BLUE}21) Install Libreoffice (fresh)${NC}"
     echo -e "${LIGHT_BLUE}22) Final steps (System cleaning and Backup)${NC}"
     echo -e "${LIGHT_BLUE}0) EXIT installer and reboot${NC}"
@@ -1024,8 +1024,8 @@ echo "You can access the share at: //your-server-ip/Share"
 
 
 # Function to install a package
-install_gnome_boxes() {
-   echo "Installing vmware..."
+install_virt_manager() {
+   echo "Installing virt-manger..."
    sudo pacman -Sy
    read -p "This installs Gnome-Boxes. Press any key to continue.."
 
@@ -1055,22 +1055,17 @@ USER=$(whoami)
 echo "Adding user $USER to the libvirt group..."
 sudo usermod -aG libvirt $USER
 
-
 # Configure default network for libvirt
-
 echo "Configuring default network..."
 
 sudo virsh net-start default
 sudo virsh net-autostart default
 
-
 # Check if IOMMU is enabled (optional)
 if grep -q "intel_iommu=on" /proc/cmdline || grep -q "amd_iommu=on" /proc/cmdline; then
 
     echo "IOMMU is enabled."
-
 else
-
     echo "IOMMU is not enabled. Please enable it in your BIOS/UEFI settings and add the appropriate kernel parameters."
 
 fi
@@ -1080,7 +1075,6 @@ echo "Checking the status of libvirt services..."
 
 systemctl status libvirtd
 
-
 # Display the current user groups
 echo "Current user groups for $USER:"
 groups $USER
@@ -1088,9 +1082,10 @@ groups $USER
 echo "Libvirt installation and configuration complete."
 echo "Please log out and log back in for group changes to take effect."
    
-   echo "Gnome-Boxes and libvirt installed successfully!"
+   echo "Virt-Manager installed successfully!"
    read -p "Press [Enter] to continue..."
 }
+
 
 # Function to install a package
 install_libreoffice() {
@@ -1197,7 +1192,7 @@ while true; do
        17) install_nfs_server ;;  
        18) install_nfs_client ;;  
        19) install_samba ;;
-       20) install_gnome_boxes ;; 
+       20) install_virt_manager ;; 
        21) install_libreoffice ;;  
        22) install_final-steps ;;  
          0) echo "Exiting..."; sudo reboot ;;
