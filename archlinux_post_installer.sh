@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Last edit: 05.12.2024 
+# Last edit: 12.12.2024 
 
 echo ""
 echo "         !!You should read this script first!!
@@ -111,37 +111,60 @@ install_needed-packages() {
     # needed packages for various variables (sysctl variables etc)
     sudo pacman -S --needed --noconfirm procps-ng iproute2 iotop nmon quota-tools lm_sensors lz4 pciutils libpciaccess
 	
-    # Fonts
+    
+	
+	# Fonts
     sudo pacman -S --needed --noconfirm ttf-dejavu ttf-freefont ttf-liberation ttf-droid terminus-font 
     sudo pacman -S --needed --noconfirm noto-fonts ttf-ubuntu-font-family ttf-roboto ttf-roboto-mono 
     
-    # Mint Icons and theme
+   # Mint Icons and theme
     sudo pacman -S --needed --noconfirm mint-l-icons mint-y-icons mint-l-theme
     
+	#################################################################################################
 
+    # Set the theme and icon theme for XFCE4 with tweaks
     echo -e "Set the theme and icon theme for XFCE4 with tweaks"
+
+    # Set the XFCE4 theme to "Mint-L-Darker"
     xfconf-query -c xsettings -p /Net/ThemeName -n -s "Mint-L-Darker"
+
+    # Set the XFCE4 icon theme to "Mint-L"
     xfconf-query -c xsettings -p /Net/IconThemeName -n -s "Mint-L"
+
+    # Enable workarounds for XFWM4 (XFCE4 window manager) to fix potential issues
     xfconf-query -c xfwm4 -p /general/enable_workarounds -s true --create --type bool
+
+    # Disable window shadows in XFWM4 for better performance
     xfconf-query -c xfwm4 -p /general/use_shadows -s false --create --type bool
-    #xfconf-query -c xfce4-desktop -v --create -p /desktop-icons/style -t int -s 0
-    
+
+    # Disable screensaver timeout (set to 0 minutes)
     xfconf-query -c xscreensaver -p /timeout -s 0 --create -t int
+
+    # Disable screensaver cycle (set to 0 minutes)
     xfconf-query -c xscreensaver -p /cycle -s 0 --create -t int
+
+    # Disable lock screen on shutdown
     xfconf-query -c xfce4-session -p /shutdown/LockScreen -s false
+
+    # Disable lock screen on suspend and hibernate
     xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/lock-screen-suspend-hibernate -s false
+
+    # Disable SSH agent on startup
     xfconf-query -c xfce4-session -p /startup/ssh-agent/enabled -n -t bool -s false
 
+    ###############################################################################################
 
-
+   
+  
+  echo ""
     echo -e "Installing make-tools..."
     sudo pacman -S --needed --noconfirm base-devel binutils git fakeroot gcc clang llvm bc meson ninja rust automake autoconf ccache
      
-    yay -S --needed --noconfirm grub-hook update-grub faudio ffaudioconverter ttf-ms-win10-auto 
+    # Installs some needed packages with the yay aur-helper
+	yay -S --needed --noconfirm grub-hook update-grub faudio ffaudioconverter ttf-ms-win10-auto 
     
    
 
-   
     # Enable the services
     sudo systemctl enable --now cpupower.service
     sudo cpupower frequency-set -g performance
@@ -166,35 +189,42 @@ install_needed-packages() {
 # Environment variables
     echo -e "
     CPU_LIMIT=0
+    CPU_GOVERNOR=performance
     GPU_USE_SYNC_OBJECTS=1
     SHARED_MEMORY=1
+    ELEVATOR=deadline
+    TRANSPARENT_HUGEPAGES=always
+    NET_CORE_WMEM_MAX=1048576
+    NET_CORE_RMEM_MAX=1048576
+    NET_IPV4_TCP_WMEM=1048576
+    NET_IPV4_TCP_RMEM=1048576
     MALLOC_CONF=background_thread:true
     MALLOC_CHECK=0
     MALLOC_TRACE=0
     LD_DEBUG_OUTPUT=0
     MESA_DEBUG=0
     LIBGL_DEBUG=0
-    LIBGL_NO_DRAWARRAYS=1
+    LIBGL_NO_DRAWARRAYS=0
     LIBGL_THROTTLE_REFRESH=1
     LIBC_FORCE_NOCHECK=1
+    LIBGL_ALWAYS_INDIRECT=1
+    LIBGL_DRI3_DISABLE=1
+    VK_LOG_LEVEL=error
+    VK_LOG_FILE=/dev/null
     HISTCONTROL=ignoreboth:eraseboth
     HISTSIZE=5
     LESSHISTFILE=-
     LESSHISTSIZE=0
     LESSSECURE=1
     PAGER=less
+    EDITOR=nano
+    VISUAL=nano
 	" | sudo tee -a /etc/environment
     
     
-    # BFQ scheduler
-    echo -e "Enable BFQ scheduler"
-    echo -e "bfq" | sudo tee /etc/modules-load.d/bfq.conf
-    echo -e 'ACTION=="add|change", ATTR{queue/scheduler}=="*bfq*", KERNEL=="sd*[!0-9]|sr*|mmcblk[0-9]*|nvme[0-9]*", ATTR{queue/scheduler}="bfq"' | sudo tee /etc/udev/rules.d/60-scheduler.rules
-    echo -e 'ACTION=="add|change", KERNEL=="sd*[!0-9]|sr*|mmcblk[0-9]*|nvme[0-9]*", ATTR{queue/iosched/slice_idle}="0", ATTR{queue/iosched/low_latency}="1"' | sudo tee /etc/udev/rules.d/90-low-latency.rules
     
     
-   
-    # Optimize sysctl
+   # Optimize sysctl
     sudo touch /etc/sysctl.d/99-custom.conf
     echo -e "
     vm.swappiness = 1
@@ -269,7 +299,7 @@ install_needed-packages() {
     kernel.acpi_video_flags = 0
     kernel.unknown_nmi_panic = 0
     kernel.panic_on_unrecovered_nmi = 0
-    dev.i915.perf_stream_paranoid = 0
+   #dev.i915.perf_stream_paranoid = 0
     dev.scsi.logging_level = 0
     debug.exception-trace = 0
     debug.kprobes-optimization = 1
@@ -357,13 +387,7 @@ install_bashrc-tweaks() {
     
     echo "fastfetch" | sudo tee -a ~/.bashrc
     
-    echo "export HISTSIZE=0" | sudo tee -a ~/.bashrc
-
-    # Set the default editor
-    export EDITOR=nano
-    export VISUAL=nano
-
-
+   
     # Alias config
     echo "alias update='sudo pacman -Syu --noconfirm' " | sudo tee -a ~/.bashrc
     echo "alias add='sudo pacman -S --noconfirm' " | sudo tee -a ~/.bashrc
@@ -561,7 +585,9 @@ install_pipewire-full() {
 # Function to install a package
 install_amd-gpu-driver() {
     echo "Installing amd-gpu-driver..."
-    sudo pacman -S --needed --noconfirm xf86-video-amdgpu mesa lib32-mesa glu lib32-glu libvdpau-va-gl adriconf
+    sudo touch /etc/drirc
+	sudo pacman -S --noconfirm mesa lib32-mesa mesa-utils libva libdrm lib32-libdrm adriconf
+	sudo pacman -S --needed --noconfirm xf86-video-amdgpu mesa lib32-mesa glu lib32-glu libvdpau-va-gl 
     sudo pacman -S --needed --noconfirm opencl-icd-loader ocl-icd lib32-ocl-icd rocm-opencl-runtime
     
     # Install Vulkan drivers
@@ -611,7 +637,6 @@ install_amd-gpu-driver() {
     echo -e "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1" | sudo tee -a /etc/environment &&
     echo -e "__GL_YIELD=NOTHING" | sudo tee -a /etc/environment &&
     echo -e "__GL_VRR_ALLOWED=0" | sudo tee -a /etc/environment &&
-    echo -e "LIBGL_DRI3_DISABLE=1" | sudo tee -a /etc/environment &&
     echo -e "VKD3D_CONFIG=upload_hvv" | sudo tee -a /etc/environment &&
     echo -e "LP_PERF=no_mipmap,no_linear,no_mip_linear,no_tex,no_blend,no_depth,no_alphatest" | sudo tee -a /etc/environment &&
     echo -e "STEAM_FRAME_FORCE_CLOSE=0" | sudo tee -a /etc/environment &&
@@ -739,7 +764,7 @@ install_steam-gaming-platform() {
     sudo pacman -S --needed --noconfirm libxslt lib32-libxslt lib32-libva gtk3 lib32-gtk3 lib32-gst-plugins-base-libs  
 
     sudo pacman -S --needed --noconfirm lib32-sdl2 lib32-alsa-lib lib32-giflib lib32-gnutls lib32-libglvnd lib32-libldap      
-    sudo pacman -S --needed --noconfirm lib32-libxinerama lib32-libxcursor lib32-gnutls lib32-libva lib32-libvdpau libvdpau
+    sudo pacman -S --needed --noconfirm lib32-libxinerama lib32-libxcursor lib32-gnutls lib32-libvdpau libvdpau
  
     echo ""
     echo "Do you wont to install the Proton Manager Protonup-Qt ?"
