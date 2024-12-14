@@ -25,8 +25,9 @@ clear
 
 
 
-echo "              !!Read this script before execute !!"
-read -p " Manjaro Postinstall for Plasma Desktop. Press any key to continue.."
+echo "                    !!Read this script before execute !!"
+echo "    If screen fliggering under wayland: Display Settings -> disable adaptive sync"
+read -p "     Manjaro Postinstall for Plasma Desktop. Press any key to continue.."
 clear
 
 sudo pacman -Sy
@@ -38,23 +39,32 @@ clear
 echo " Needed Base Packages"
 sleep 2
 sudo pacman -S --needed --noconfirm manjaro-tools git base-devel fakeroot fwupd gsmartcontrol gnome-disk-utility mtools f2fs-tools xfsdump fuse2 fuseiso samba bind yay
+
+
+echo "Install complete Wayland Support"
+sleep 2
+sudo pacman -S --needed --noconfirm wayland-protocols plasma-wayland-protocols egl-wayland waylandpp xwaylandvideobridge
 clear
+
 
 echo "Install Complete Python support for gui scripts"
 sleep 2 
 sudo pacman -S --needed --noconfirm python python-extras python-autocommand python-reportlab tcl tk
 clear
 
+
 echo " Install various programs.."
 sleep 2
 sudo pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de thunderbird discord ventoy ktorrent adriconf 
 clear
+
 
 echo " Multimedia"
 sleep 2
 sudo pacman -S --needed lollypop yt-dlp flac lame
 yay -S --needed ffaudioconverter 
 clear
+
 
 echo  " Steam Gaming Platform"
 sleep 2
