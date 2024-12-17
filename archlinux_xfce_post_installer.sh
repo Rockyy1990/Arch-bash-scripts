@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Last edit: 17.12.2024 
+# Last edit: 13.12.2024 
 
 echo ""
 echo "         !!You should read this script first!!
@@ -103,7 +103,7 @@ install_needed-packages() {
     sudo pacman -S --needed --noconfirm xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-user-dirs
     
     # Full python support
-    sudo pacman -S --needed --noconfirm python python-extras python-autocommand python-reportlab python-opengl python-glfw python-pyxdg python-cairo python-pywayland python-cachy tcl tk
+    sudo pacman -S --needed --noconfirm python python-extras python-autocommand python-reportlab python-opengl python-glfw python-pyxdg python-wheel python-cairo python-pywayland python-cachy tcl tk
 	
     # System tweaks
     sudo pacman -S --needed --noconfirm irqbalance memavaild nohang ananicy-cpp
@@ -117,7 +117,43 @@ install_needed-packages() {
     sudo pacman -S --needed --noconfirm ttf-dejavu ttf-freefont ttf-liberation ttf-droid terminus-font 
     sudo pacman -S --needed --noconfirm noto-fonts ttf-ubuntu-font-family ttf-roboto ttf-roboto-mono 
     
-   
+   # Mint Icons and theme
+    sudo pacman -S --needed --noconfirm mint-l-icons mint-y-icons mint-l-theme
+    
+	#################################################################################################
+
+    # Set the theme and icon theme for XFCE4 with tweaks
+    echo -e "Set the theme and icon theme for XFCE4 with tweaks"
+
+    # Set the XFCE4 theme to "Mint-L-Darker"
+    xfconf-query -c xsettings -p /Net/ThemeName -n -s "Mint-L-Darker"
+
+    # Set the XFCE4 icon theme to "Mint-L"
+    xfconf-query -c xsettings -p /Net/IconThemeName -n -s "Mint-L"
+
+    # Enable workarounds for XFWM4 (XFCE4 window manager) to fix potential issues
+    xfconf-query -c xfwm4 -p /general/enable_workarounds -s true --create --type bool
+
+    # Disable window shadows in XFWM4 for better performance
+    xfconf-query -c xfwm4 -p /general/use_shadows -s false --create --type bool
+
+    # Disable screensaver timeout (set to 0 minutes)
+    xfconf-query -c xscreensaver -p /timeout -s 0 --create -t int
+
+    # Disable screensaver cycle (set to 0 minutes)
+    xfconf-query -c xscreensaver -p /cycle -s 0 --create -t int
+
+    # Disable lock screen on shutdown
+    xfconf-query -c xfce4-session -p /shutdown/LockScreen -s false
+
+    # Disable lock screen on suspend and hibernate
+    xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/lock-screen-suspend-hibernate -s false
+
+    # Disable SSH agent on startup
+    xfconf-query -c xfce4-session -p /startup/ssh-agent/enabled -n -t bool -s false
+
+    ###############################################################################################
+
    
   
   echo ""
@@ -479,7 +515,7 @@ for package in "${available_packages[@]}"; do
 done
 
 # Dialog for package selection
-dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu installierenden Pakete aus.:" 20 60 0 "${dialog_options[@]}" 2> "$tempfile"
+dialog --title "Arch Linux Paketinstallation" --checklist "Wählen Sie die zu installierenden Pakete aus.:" 28 0 0 "${dialog_options[@]}" 2> "$tempfile"
 
 # Check if the user canceled
 if [ $? -ne 0 ]; then
@@ -488,7 +524,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Read selected packages from the temporary file
-readarray -t selected_packages < "$tempfile"
+selected_packages=($(<"$tempfile"))
 
 # Install packages
 if [[ ${#selected_packages[@]} -gt 0 ]]; then
@@ -590,7 +626,51 @@ install_amd-gpu-driver() {
     KERNEL=="card0", SUBSYSTEM=="drm", DRIVERS=="amdgpu", ATTR{device/power_dpm_state}="performance"
     " | sudo tee -a /usr/lib/udev/rules.d/30-amdgpu-pm.rules
     
-    
+    echo -e "AMD_VULKAN_ICD=RADV" | sudo tee -a /etc/environment &&
+    echo -e "RADV_PERFTEST=aco,sam,nggc" | sudo tee -a /etc/environment &&
+    echo -e "RADV_DEBUG=novrsflatshading" | sudo tee -a /etc/environment &&
+    echo -e "WINEPREFIX=~/.wine" | sudo tee -a /etc/environment &&
+    echo -e "MOZ_ENABLE_WAYLAND=0" | sudo tee -a /etc/environment &&
+    echo -e "WINE_LARGE_ADDRESS_AWARE=1" | sudo tee -a /etc/environment &&
+    echo -e "WINEFSYNC_SPINCOUNT=24" | sudo tee -a /etc/environment &&
+    echo -e "WINEFSYNC=1" | sudo tee -a /etc/environment &&
+    echo -e "WINEFSYNC_FUTEX2=0" | sudo tee -a /etc/environment &&
+    echo -e "STAGING_WRITECOPY=0" | sudo tee -a /etc/environment &&
+    echo -e "STAGING_SHARED_MEMORY=0" | sudo tee -a /etc/environment &&
+    echo -e "STAGING_RT_PRIORITY_SERVER=4" | sudo tee -a /etc/environment &&
+    echo -e "STAGING_RT_PRIORITY_BASE=2" | sudo tee -a /etc/environment &&
+    echo -e "STAGING_AUDIO_PERIOD=13333" | sudo tee -a /etc/environment &&
+    echo -e "WINE_FSR_OVERRIDE=1" | sudo tee -a /etc/environment &&
+    echo -e "WINE_FULLSCREEN_FSR=1" | sudo tee -a /etc/environment &&
+    echo -e "WINE_VK_USE_FSR=1" | sudo tee -a /etc/environment &&
+    echo -e "PROTON_LOG=0" | sudo tee -a /etc/environment &&
+    echo -e "PROTON_USE_WINED3D=0" | sudo tee -a /etc/environment &&
+    echo -e "PROTON_FORCE_LARGE_ADDRESS_AWARE=1" | sudo tee -a /etc/environment &&
+    echo -e "PROTON_NO_ESYNC=1" | sudo tee -a /etc/environment &&
+    echo -e "ENABLE_VKBASALT=0" | sudo tee -a /etc/environment &&
+    echo -e "DXVK_ASYNC=1" | sudo tee -a /etc/environment &&
+    echo -e "DXVK_HUD=compile" | sudo tee -a /etc/environment &&
+    echo -e "MESA_BACK_BUFFER=ximage" | sudo tee -a /etc/environment &&
+    echo -e "MESA_NO_DITHER=1" | sudo tee -a /etc/environment &&
+    echo -e "MESA_NO_ERROR=1" | sudo tee -a /etc/environment && 
+    echo -e "MESA_SHADER_CACHE_DISABLE=false" | sudo tee -a /etc/environment &&
+    echo -e "mesa_glthread=true" | sudo tee -a /etc/environment &&
+    echo -e "ANV_ENABLE_PIPELINE_CACHE=1" | sudo tee -a /etc/environment &&
+    echo -e "__GLX_VENDOR_LIBRARY_NAME=mesa" | sudo tee -a /etc/environment &&
+    echo -e "__GLVND_DISALLOW_PATCHING=1" | sudo tee -a /etc/environment &&
+    echo -e "__GL_THREADED_OPTIMIZATIONS=1" | sudo tee -a /etc/environment &&
+    echo -e "__GL_SYNC_TO_VBLANK=1" | sudo tee -a /etc/environment &&
+    echo -e "__GL_MaxFramesAllowed=1" | sudo tee -a /etc/environment &&
+    echo -e "__GL_SHADER_DISK_CACHE=0" | sudo tee -a /etc/environment &&
+    echo -e "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1" | sudo tee -a /etc/environment &&
+    echo -e "__GL_YIELD=NOTHING" | sudo tee -a /etc/environment &&
+    echo -e "__GL_VRR_ALLOWED=0" | sudo tee -a /etc/environment &&
+    echo -e "VKD3D_CONFIG=upload_hvv" | sudo tee -a /etc/environment &&
+    echo -e "LP_PERF=no_mipmap,no_linear,no_mip_linear,no_tex,no_blend,no_depth,no_alphatest" | sudo tee -a /etc/environment &&
+    echo -e "STEAM_FRAME_FORCE_CLOSE=0" | sudo tee -a /etc/environment &&
+    echo -e "STEAM_RUNTIME_HEAVY=1" | sudo tee -a /etc/environment &&
+    echo -e "GAMEMODE=1" | sudo tee -a /etc/environment &&
+    echo -e "vblank_mode=1" | sudo tee -a /etc/environment
     
     echo -e "Disable GPU polling"
     echo -e "options drm_kms_helper poll=0" | sudo tee /etc/modprobe.d/disable-gpu-polling.conf
@@ -609,7 +689,50 @@ install_nvidia-gpu-driver() {
     sudo pacman -S --needed --noconfirm nvidia nvidia-utils lib32-nvidia-utils opencl-nvidia lib32-opencl-nvidia 
     sudo pacman -S --needed --noconfirm libxnvctrl libvdpau vulkan-icd-loader lib32-vulkan-icd-loader nvidia-settings
     
-            
+            echo -e "WINEPREFIX=~/.wine" | sudo tee -a /etc/environment &&
+            echo -e "WINE_LARGE_ADDRESS_AWARE=1" | sudo tee -a /etc/environment &&
+            echo -e "WINEFSYNC_SPINCOUNT=24" | sudo tee -a /etc/environment &&
+            echo -e "WINEFSYNC=1" | sudo tee -a /etc/environment &&
+            echo -e "WINEFSYNC_FUTEX2=1" | sudo tee -a /etc/environment &&
+            echo -e "WINE_SKIP_GECKO_INSTALLATION=1" | sudo tee -a /etc/environment &&
+            echo -e "WINE_SKIP_MONO_INSTALLATION=1" | sudo tee -a /etc/environment &&
+            echo -e "STAGING_WRITECOPY=1" | sudo tee -a /etc/environment &&
+            echo -e "STAGING_SHARED_MEMORY=1" | sudo tee -a /etc/environment &&
+            echo -e "STAGING_RT_PRIORITY_SERVER=4" | sudo tee -a /etc/environment &&
+            echo -e "STAGING_RT_PRIORITY_BASE=2" | sudo tee -a /etc/environment &&
+            echo -e "STAGING_AUDIO_PERIOD=13333" | sudo tee -a /etc/environment &&
+            echo -e "PROTON_LOG=0" | sudo tee -a /etc/environment &&
+            echo -e "PROTON_USE_WINED3D=1" | sudo tee -a /etc/environment &&
+            echo -e "PROTON_FORCE_LARGE_ADDRESS_AWARE=1" | sudo tee -a /etc/environment &&
+            echo -e "PROTON_NO_ESYNC=1" | sudo tee -a /etc/environment &&
+            echo -e "ENABLE_VKBASALT=1" | sudo tee -a /etc/environment &&
+            echo -e "DXVK_ASYNC=1" | sudo tee -a /etc/environment &&
+            echo -e "DXVK_HUD=compile" | sudo tee -a /etc/environment &&
+            echo -e "MESA_BACK_BUFFER=ximage" | sudo tee -a /etc/environment &&
+            echo -e "MESA_NO_DITHER=1" | sudo tee -a /etc/environment &&
+            echo -e "MESA_NO_ERROR=1" | sudo tee -a /etc/environment &&
+            echo -e "MESA_GLSL_CACHE_DISABLE=false" | sudo tee -a /etc/environment &&
+            echo -e "mesa_glthread=true" | sudo tee -a /etc/environment &&
+            echo -e "ANV_ENABLE_PIPELINE_CACHE=1" | sudo tee -a /etc/environment &&
+            echo -e "__NV_PRIME_RENDER_OFFLOAD=1" | sudo tee -a /etc/environment &&
+            echo -e "__GLX_VENDOR_LIBRARY_NAME=mesa" | sudo tee -a /etc/environment &&
+            echo -e "__GLVND_DISALLOW_PATCHING=1" | sudo tee -a /etc/environment &&
+            echo -e "__GL_THREADED_OPTIMIZATIONS=1" | sudo tee -a /etc/environment &&
+            echo -e "__GL_SYNC_TO_VBLANK=1" | sudo tee -a /etc/environment &&
+            echo -e "__GL_MaxFramesAllowed=1" | sudo tee -a /etc/environment &&
+            echo -e "__GL_SHADER_DISK_CACHE=1" | sudo tee -a /etc/environment &&
+            echo -e "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1" | sudo tee -a /etc/environment &&
+            echo -e "__GL_YIELD=NOTHING" | sudo tee -a /etc/environment &&
+            echo -e "__GL_VRR_ALLOWED=0" | sudo tee -a /etc/environment &&
+            echo -e "LIBGL_DRI3_DISABLE=1" | sudo tee -a /etc/environment &&
+            echo -e "VKD3D_CONFIG=upload_hvv" | sudo tee -a /etc/environment &&
+            echo -e "LP_PERF=no_mipmap,no_linear,no_mip_linear,no_tex,no_blend,no_depth,no_alphatest" | sudo tee -a /etc/environment &&
+            echo -e "STEAM_FRAME_FORCE_CLOSE=0" | sudo tee -a /etc/environment &&
+            echo -e "STEAM_RUNTIME_HEAVY=1" | sudo tee -a /etc/environment &&
+            echo -e "GAMEMODE=1" | sudo tee -a /etc/environment &&
+            echo -e "vblank_mode=1" | sudo tee -a /etc/environment
+
+
     echo -e "Disable GPU polling"
     echo -e "options drm_kms_helper poll=0" | sudo tee /etc/modprobe.d/disable-gpu-polling.conf
 
