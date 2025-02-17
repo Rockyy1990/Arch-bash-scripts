@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Last edit: 05.02.2025 
+# Last edit: 17.02.2025 
 
 echo ""
 echo "----------------------------------------------"
@@ -33,9 +33,6 @@ sudo pacman -S --needed --noconfirm opencl-icd-loader ocl-icd lib32-ocl-icd rocm
 sudo pacman -S --needed --noconfirm vulkan-radeon lib32-vulkan-radeon vulkan-swrast vulkan-icd-loader lib32-vulkan-icd-loader 
 sudo pacman -S --needed --noconfirm vulkan-validation-layers vulkan-mesa-layers lib32-vulkan-mesa-layers vulkan-headers
     
-echo "
-KERNEL=="card0", SUBSYSTEM=="drm", DRIVERS=="amdgpu", ATTR{device/power_dpm_state}="performance"
-" | sudo tee -a /usr/lib/udev/rules.d/30-amdgpu-pm.rules
 
 # Disable GPU polling
 echo -e "options drm_kms_helper poll=0" | sudo tee /etc/modprobe.d/disable-gpu-polling.conf
@@ -75,7 +72,6 @@ vblank_mode=1
 PROTON_LOG=0
 PROTON_USE_WINED3D=0
 PROTON_FORCE_LARGE_ADDRESS_AWARE=1
-PROTON_NO_ESYNC=1
 PROTON_USE_FSYNC=1
 DXVK_ASYNC=1
 WINE_FSR_OVERRIDE=1
@@ -88,27 +84,20 @@ MESA_NO_DITHER=0
 MESA_SHADER_CACHE_DISABLE=false
 mesa_glthread=true
 MESA_DEBUG=0
-GALLIUM_DRIVER=zink
-GALLIUM_NOSW=1
 MESA_VK_ENABLE_SUBMIT_THREAD=1
 STAGING_SHARED_MEMORY=1
 STAGING_AUDIO_PERIOD=13333
 STAGING_RT_PRIORITY_BASE=2
 ANV_ENABLE_PIPELINE_CACHE=1
 LIBGL_DEBUG=0
-LIBGL_NO_DRAWARRAYS=0
 LIBGL_THROTTLE_REFRESH=1
 LIBC_FORCE_NOCHECK=1
 __GLX_VENDOR_LIBRARY_NAME=mesa
 __GLVND_DISALLOW_PATCHING=0
 __GL_THREADED_OPTIMIZATIONS=1
-__GL_SYNC_TO_VBLANK=1
 __GL_SHADER_DISK_CACHE=0
-__GL_YIELD=USLEEP
 __GL_MaxFramesAllowed=1
 __GL_VRR_ALLOWED=0
-VK_LOG_LEVEL=error
-VK_LOG_FILE=/dev/null
 " | sudo tee -a /etc/environment
 
 
@@ -117,4 +106,3 @@ echo ""
 echo -e "Postconfig (Gaming) is complete."
 sleep 3
 exit
-
