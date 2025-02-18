@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Last edit: 05.02.2025 
+# Last edit: 06.02.2025 
 
 echo ""
 echo "----------------------------------------------"
@@ -75,7 +75,7 @@ sudo pacman -S --needed --noconfirm noto-fonts ttf-ubuntu-font-family ttf-roboto
 
 
 # Install base programs
-sudo pacman -S --needed --noconfirm firefox firefox-i18n-de thunderbird-i18n-de thunderbird celluloid transmission-gtk 
+sudo pacman -S --needed --noconfirm firefox firefox-i18n-de thunderbird-i18n-de thunderbird celluloid transmission-gtk mousepad
     
    
 # Installing pipewire
@@ -266,7 +266,7 @@ clear
 
 echo ""
 echo "----------------------------------------------"
-echo "       Postconfig is now complete.           "
+echo "       Postconfig is now complete.            "
 echo "                 Have fun !!                  "
 echo "----------------------------------------------"
 echo ""
