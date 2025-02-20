@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Last edit: 19.02.2025 
+# Last edit: 20.02.2025 
 
 echo ""
 echo "----------------------------------------------"
@@ -11,10 +11,19 @@ sleep 3
 echo ""
 echo "      !!!You should read this script first!!!
 "
-echo "          (The default AUR Helper is yay)
-                       (Flatpak support) 
+echo "         (The default AUR Helper is yay)
+            (rtorrent terminal tool for torrents)
+                    (Flatpak support)
+	
+ 
+ rtorrent usage: rtorrent datei.torrents
+                 rtorrent load datei.torrent
+
+config: ~/.rtorrent.rc
 "
-read -p "        ..Press any key to continue.."
+
+echo ""
+read -p "         ..Press any key to continue.."
 clear
 
 # Config the pacman.conf
@@ -45,7 +54,7 @@ clear
 # Install system packages
 sudo pacman -S --needed --noconfirm dbus-broker dkms kmod amd-ucode pacman-contrib bash-completion git ufw yay samba bind ethtool libelf nss
 sudo pacman -S --needed --noconfirm rsync mtools dosfstools xfsdump jfsutils btrfs-progs f2fs-tools quota-tools gnome-disk-utility 
-sudo pacman -S --needed --noconfirm lrzip zstd lz4 laszip unrar unzip fuse2 fuseiso
+sudo pacman -S --needed --noconfirm lrzip zstd lz4 laszip unrar unzip fuse2 fuseiso rtorrent
 
 # Installing fastfetch
 sudo pacman -S --noconfirm fastfetch
@@ -53,12 +62,12 @@ sudo pacman -S --noconfirm fastfetch
 # Using zsh as default
 sudo pacman -S --noconfirm zsh zsh-autosuggestions zsh-syntax-highlighting
 touch ~/.zshrc
-echo "exec zsh" >> ~/.bashrc
+echo "exec zsh" | tee -a ~/.bashrc
 # sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 # chsh -s $(which zsh)
 
-echo "fastfetch" | sudo tee -a ~/.bashrc
-echo "fastfetch" | sudo tee -a ~/.zshrc
+echo "fastfetch" | tee -a ~/.bashrc
+echo "fastfetch" | tee -a ~/.zshrc
 
 
 # Complet x11 support
@@ -79,7 +88,41 @@ sudo pacman -S --needed --noconfirm irqbalance nohang ananicy-cpp
 sudo pacman -S --needed --noconfirm base-devel binutils fakeroot gcc clang llvm bc meson ninja automake autoconf ccache
 
 # needed packages for various variables (sysctl variables etc)
-sudo pacman -S --needed --noconfirm procps-ng iproute2 iotop nmon lm_sensors pciutils libpciaccess
+sudo pacman -S --needed --noconfirm procps-ng iproute2 nmon lm_sensors pciutils libpciaccess
+
+
+#----------------------------------------------------------------------------------------------------------------------
+
+# Installing amd-gpu-driver
+sudo pacman -S --noconfirm mesa lib32-mesa mesa-utils libva libdrm lib32-libdrm 
+sudo pacman -S --needed --noconfirm xf86-video-amdgpu mesa lib32-mesa glu lib32-glu libvdpau-va-gl 
+sudo pacman -S --needed --noconfirm opencl-icd-loader ocl-icd lib32-ocl-icd rocm-opencl-runtime
+    
+# Install Vulkan drivers
+sudo pacman -S --needed --noconfirm vulkan-radeon lib32-vulkan-radeon vulkan-swrast vulkan-icd-loader lib32-vulkan-icd-loader 
+sudo pacman -S --needed --noconfirm vulkan-validation-layers vulkan-mesa-layers lib32-vulkan-mesa-layers vulkan-headers
+
+echo "
+AMD_VULKAN_ICD=RADV
+RADV_PERFTEST=aco,sam,nggc
+RADV_DEBUG=novrsflatshading
+" | sudo tee -a /etc/environment
+    
+# Disable GPU polling
+echo -e "options drm_kms_helper poll=0" | sudo tee /etc/modprobe.d/disable-gpu-polling.conf
+
+
+# Iinstall intel gpu driver
+# sudo pacman -S --needed xf86-video-intel intel-media-driver mesa mesa-utils vulkan-intel vulkan-swrast
+# sudo pacman -S --needed intel-gmmlib intel-compute-runtime libva-intel-driver libva-utils
+# sudo pacman -S --needed vulkan-validation-layers vulkan-mesa-layers vulkan-icd-loader lib32-vulkan-icd-loader
+
+
+# Install nvidia driver
+# sudo pacman -S --needed --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils opencl-nvidia lib32-opencl-nvidia
+# sudo pacman -S --needed --noconfirm libxnvctrl libvdpau lib32-libvdpau vulkan-icd-loader lib32-vulkan-icd-loader
+#-------------------------------------------------------------------------------------------------------------------------
+
 
 # Fonts
 sudo pacman -S --needed --noconfirm ttf-dejavu ttf-freefont ttf-liberation ttf-droid terminus-font 
@@ -91,24 +134,33 @@ sudo pacman -S --needed --noconfirm flatpak
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
 # Install base programs
-sudo pacman -S --needed --noconfirm firefox firefox-i18n-de thunderbird-i18n-de thunderbird celluloid transmission-gtk mousepad
+sudo pacman -S --needed --noconfirm firefox thunderbird celluloid libreoffice-fresh xed yt-dlp gthumb 
+sudo pacman -S --needed --noconfirm firefox-i18n-de thunderbird-i18n-de libreoffice-fresh-de
     
    
 # Installing pipewire
-sudo pacman -S --needed --noconfirm pipewire pipewire-alsa pipewire-pulse pipewire-zeroconf pipewire-v4l2 gst-plugin-pipewire wireplumber 
-sudo pacman -S --needed --noconfirm pavucontrol rtkit alsa-firmware alsa-plugins alsa-lib lib32-alsa-lib
+sudo pacman -S --needed --noconfirm pipewire pipewire-alsa pipewire-pulse pipewire-zeroconf pipewire-v4l2 wireplumber 
+sudo pacman -S --needed --noconfirm pavucontrol gst-plugin-pipewire rtkit alsa-firmware alsa-plugins alsa-lib lib32-alsa-lib
     
 
 # Multimeda Codecs
-sudo pacman -S --needed --noconfirm lame flac opus ffmpeg a52dec x264 x265 libvpx libvorbis libogg speex libdca libfdk-aac
+sudo pacman -S --needed --noconfirm lame flac opus ffmpeg a52dec x264 x265 libvpx libvorbis libogg speex libfdk-aac
 sudo pacman -S --needed --noconfirm gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gstreamer-vaapi gst-libav
-sudo pacman -S --needed --noconfirm twolame libmad libtheora libmpeg2 faac faad2 libavif libheif xvidcore
+sudo pacman -S --needed --noconfirm twolame libmad libtheora libmpeg2 faac faad2 libavif libheif xvidcore openal lib32-openal
 
-echo "hrtf = true" | sudo tee -a  ~/.alsoftrc
+
+# Other values for ~/.alsoftrc
+# default-sample-rate = 48000
+# default-channels = 2
+# latency = 24ms
+
+echo "
+hrtf = true
+" | tee -a  ~/.alsoftrc
     
 
      
-# Installs some needed packages with the yay aur-helper
+# Installs some needed packages with yay 
 yay -S --needed --noconfirm grub-hook update-grub faudio 
     
    
@@ -127,9 +179,6 @@ sudo systemctl enable ananicy-cpp
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw enable
-
-# Update the library cache
-sudo ldconfig
 
 
 
@@ -157,6 +206,7 @@ clear
 
 
 ## Set some ulimits to unlimited
+# This should increase performance in some situations
 echo -e "
 * soft nofile 524288
 * hard nofile 524288
@@ -221,10 +271,12 @@ VISUAL=nano
 
 
 
+# Enable fstrim for ssd/nvme
 sudo systemctl enable fstrim.timer
 sudo fstrim -av
 clear
 
+# Package cleaning
 sudo pacman -Scc --noconfirm
 yay -Yc --noconfirm
 sudo paccache -rk 0
@@ -235,6 +287,10 @@ sudo rm -rf /tmp/*
 sudo rm -rf ~/.cache/*
 
 
+# Update the dynamic library cache
+sudo ldconfig
+
+# Update grub bootloader
 sudo grub-mkconfig -o /boot/grub/grub.cfg
 clear
 
