@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Last Edit: 21.02.2025
+
 read -p "Plasma Desktop settings.. Press any key to continue."
 
 # KDE tweaks
@@ -17,6 +19,9 @@ kwriteconfig5 --file klaunchrc --group BusyCursorSettings --key "Bouncing" --typ
 kwriteconfig5 --file kwalletrc --group Wallet --key "Enabled" --type bool false
 kwriteconfig5 --file kwalletrc --group Wallet --key "First Use" --type bool false
 
+sudo pacman -S --needed --noconfirm plasma-workspace-wallpapers
+
+echo ""
 echo "Settings are set. Reboot in 3 seconds."
 sleep 3
 sudo reboot

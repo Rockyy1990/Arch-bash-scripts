@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
 
-# Last edit: 20.02.2025 
+# Last edit: 21.02.2025 
 
 echo ""
 echo "----------------------------------------------"
 echo "    ..Archlinux base config after install..   "
 echo "                                              "
 echo "----------------------------------------------"
-sleep 3
+sleep 2
 echo ""
 echo "      !!!You should read this script first!!!
 "
 echo "         (The default AUR Helper is yay)
             (rtorrent terminal tool for torrents)
                     (Flatpak support)
+				  (Pipewire as default)
+				  
+	Optional:
+	Archlinux wallpaper
+	Linux Mint wallpaper
+	Linux Mint Icons (mint-l-icons)
 	
- 
  rtorrent usage: rtorrent datei.torrents
                  rtorrent load datei.torrent
 
@@ -35,7 +40,7 @@ sudo sed -i -e s"/\#VerbosePkgLists/VerbosePkgLists/"g /etc/pacman.conf
 sudo sed -i -e s"/\#ParallelDownloads.*/ParallelDownloads = 2/"g /etc/pacman.conf
     
 
-    # Installing chaotic-aur for compiled AUR packages.
+# Installing chaotic-aur for compiled AUR packages.
 sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
 sudo pacman-key --lsign-key 3056513887B78AEB
 sudo pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 
@@ -52,15 +57,15 @@ clear
 
 
 # Install system packages
-sudo pacman -S --needed --noconfirm dbus-broker dkms kmod amd-ucode pacman-contrib bash-completion git ufw yay samba bind ethtool libelf nss
+sudo pacman -S --needed --noconfirm dbus-broker dkms kmod amd-ucode pacman-contrib mono nano-syntax-highlighting git ufw yay samba bind ethtool 
 sudo pacman -S --needed --noconfirm rsync mtools dosfstools xfsdump jfsutils btrfs-progs f2fs-tools quota-tools gnome-disk-utility 
-sudo pacman -S --needed --noconfirm lrzip zstd lz4 laszip unrar unzip fuse2 fuseiso rtorrent
+sudo pacman -S --needed --noconfirm lrzip zstd lz4 laszip unrar unzip fuse2 fuseiso rtorrent 
 
 # Installing fastfetch
 sudo pacman -S --noconfirm fastfetch
 
 # Using zsh as default
-sudo pacman -S --noconfirm zsh zsh-autosuggestions zsh-syntax-highlighting
+sudo pacman -S --noconfirm zsh zsh-autosuggestions zsh-syntax-highlighting 
 touch ~/.zshrc
 echo "exec zsh" | tee -a ~/.bashrc
 # sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
@@ -71,11 +76,11 @@ echo "fastfetch" | tee -a ~/.zshrc
 
 
 # Complet x11 support
-sudo pacman -S --needed --noconfirm xorg-server-xvfb xorg-xkill xorg-xinput xorg-xrandr libxv libxcomposite lib32-libxcomposite libxinerama lib32-libxrandr lib32-libxfixes
-    
+sudo pacman -S --needed --noconfirm xorg-server-xvfb xorg-xkill xorg-xinput xorg-xrandr libxv libxcomposite libxinerama 
+sudo pacman -S --needed --noconfirm lib32-libxcomposite lib32-libxrandr lib32-libxfixes
 
 # Additional System tools and libraries
-sudo pacman -S --needed --noconfirm hdparm sdparm hwdetect hwdata sof-firmware cpupower
+sudo pacman -S --needed --noconfirm hdparm sdparm hwdetect hwdata sof-firmware cpupower openssl fwupd libelf nss micro
 sudo pacman -S --needed --noconfirm xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-user-dirs
     
 # Full python support
@@ -85,7 +90,7 @@ sudo pacman -S --needed --noconfirm python python-extras python-fuse python-repo
 sudo pacman -S --needed --noconfirm irqbalance nohang ananicy-cpp
  
  # Installing make-tools
-sudo pacman -S --needed --noconfirm base-devel binutils fakeroot gcc clang llvm bc meson ninja automake autoconf ccache
+sudo pacman -S --needed --noconfirm base-devel binutils fakeroot clang llvm bc meson ninja cmake automake autoconf ccache
 
 # needed packages for various variables (sysctl variables etc)
 sudo pacman -S --needed --noconfirm procps-ng iproute2 nmon lm_sensors pciutils libpciaccess
@@ -136,6 +141,15 @@ flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.f
 # Install base programs
 sudo pacman -S --needed --noconfirm firefox thunderbird celluloid libreoffice-fresh xed yt-dlp gthumb 
 sudo pacman -S --needed --noconfirm firefox-i18n-de thunderbird-i18n-de libreoffice-fresh-de
+clear
+
+echo "Do you wont to install archlinux or mint wallpapers? If not needed press n"
+sudo pacman -S --needed archlinux-wallpaper
+yay -S mint-backgrounds-tina mint-backgrounds-victoria
+clear
+echo "Do you wont to install mint icons? If not needed press n"
+sudo pacman -S --needed mint-l-icons
+clear
     
    
 # Installing pipewire
