@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Last Edit: 27.06.25
+# Last Edit: 01.07.25
 
 echo ""
 echo " ---------------------------"
@@ -21,17 +21,10 @@ echo ""
 sudo pacman -Syu --noconfirm
 
 # Install necessary packages
-sudo pacman -S --needed --noconfirm base-devel fakeroot dkms gsmartcontrol gnome-firmware gvfs gvfs-smb gvfs-nfs ufw samba apache libwbclient git curl openssh
-sudo pacman -S --needed --noconfirm mesa mesa-utils opencl-mesa vulkan-mesa-layers
+sudo pacman -S --needed --noconfirm base-devel fakeroot pacman-contrib dkms gsmartcontrol gnome-firmware gvfs gvfs-smb gvfs-nfs ufw samba libwbclient git curl openssh
+sudo pacman -S --needed --noconfirm mesa mesa-utils opencl-mesa vulkan-mesa-layers vulkan-tools
 sudo pacman -S --needed --noconfirm firefox firefox-i18n-de mousepad brasero
 
-# Install zsh as default shell
-sudo pacman -S --needed --noconfirm zsh zsh-completions zsh-autosuggestions zsh-syntax-highlighting pacman-contrib
-
-chsh -s $(which zsh)
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-echo "/usr/bin/zsh" | sudo tee -a /etc/shells
-source ~/.zshrc
 
 
 # Install Yay from AUR
@@ -51,8 +44,9 @@ yay -S --needed nomachine webmin
 yay -S --needed makemkv makemkv-libaacs jre-openjdk
 yay -S --needed faudio
 
-sudo pacman -S --needed ffmpeg fdkaac lame libmad0 flac twolame x264 x265 a52dec libsoxr libdvdcss rtkit
+sudo pacman -S --needed ffmpeg fdkaac libmad0 flac lame twolame libtheora libmatroska x264 x265 a52dec libsoxr libdvdcss gst-libav rtkit
 sudo pacman -S --needed celluloid handbrake soundconverter yt-dlp pavucontrol
+
 
 # Install nvidia drivers
 sudo pacman -S --needed --noconfirm nvidia nvidia-utils opencl-nvidia libxnvctrl libvdpau nvidia-settings
@@ -86,6 +80,7 @@ sudo chmod +x /usr/local/bin/auto-update.sh
 
 # Add cron job for automatic updates
 echo "0 2 */5 * * /usr/local/bin/auto-update.sh" | sudo crontab -
+
 
 # Setup UFW firewall if available
 if command -v ufw >/dev/null 2>&1; then
