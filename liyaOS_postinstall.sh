@@ -5,7 +5,7 @@ echo "LiyaOS Postinstall"
 read -p "Press any key to continue..."
 echo ""
 
-sudo pacman -R noconfirm brave-bin gnome-chess-classic gnuchess gnome-robots perl-www-robotrules timeshift timeshift-autosnap geary pinta bleachbit
+sudo pacman -R --noconfirm brave-bin gnome-chess-classic gnuchess gnome-robots perl-www-robotrules timeshift timeshift-autosnap geary pinta bleachbit
 sudo pacman -R proton-vpn-gtk-app python-proton-core python-proton-vpn-network-manager python-proton-vpn-local-agent
 
 sudo pacman-key --init
