@@ -1,11 +1,11 @@
 #!/bin/bash
 
 echo "
-####################################################################################
-# Manjaro Plasma Live ISO Builder Script
-# Automatisierte ISO-Erstellung für Plasma Desktop
-# Basierend auf: https://wiki.manjaro.org/index.php/Build_Manjaro_ISOs_with_buildiso
-####################################################################################
+-----------------------------------------------------------------------------------
+ Manjaro Plasma Live ISO Builder Script
+ Automatisierte ISO-Erstellung für Plasma Desktop
+ Basierend auf: https://wiki.manjaro.org/index.php/Build_Manjaro_ISOs_with_buildiso
+-----------------------------------------------------------------------------------
 "
 echo ""
 read -p "Drücke eine beliebige taste um fortzufahren.."
@@ -41,7 +41,7 @@ NC='\033[0m' # No Color
 PROFILE="kde"         # Plasma verwendet das kde-Profil
 BRANCH="stable"       # stable, testing, unstable
 KERNEL="linux618"     # Kernel-Version
-BUILD_TYPE="minimal"  # full oder minimal
+BUILD_TYPE="full"     # full oder minimal
 ISO_OUTPUT="/var/cache/manjaro-tools/iso/manjaro/kde"
 CONFIG_DIR="$HOME/.config/manjaro-tools"
 PROFILES_DIR="$HOME/iso-profiles"
@@ -171,14 +171,16 @@ download_profiles() {
 
     if [ -d "$PROFILES_DIR" ]; then
 
+read -p "Beliebige Taste drücken zum konfigurieren der profile.conf datei für die Manjaro iso"
+nano -w ~/iso-profiles/manjaro/kde/profile.conf
+
 cat << EOF | tee -a ~/iso-profiles/manjaro/kde/Packages-Desktop
 xfsdump
 udftools
 f2fs-tools
 efibootmgr
 gnome-disk-utility
-mintstick
-mint-l-icons
+pacman-contrib
 kio-admin
 wayland-protocols
 plasma-wayland-protocols
@@ -194,31 +196,14 @@ opencl-mesa
 gsmartcontrol
 filezilla
 soundconverter
-handbrake
-smb4k
 ffmpeg
 vivaldi
 vivaldi-ffmpeg-codecs
-smplayer
 discord
-qbittorrent
-telegram-desktop
-obs-studio
 cameractrls
 pipewire-v4l2
 pipewire-libcamera
 gst-plugins-pipewire
-libgdiplus
-gamemode
-lib32-gamemode
-steam
-protontricks
-protonup-qt
-wine
-wine-mono
-winetricks
-ttf-liberation
-ttf-droid
 yt-dlp
 deno
 yay
@@ -226,6 +211,12 @@ EOF
 
 sed -i '/^firefox$/d' ~/iso-profiles/manjaro/kde/Packages-Desktop
 sed -i '/^yakuake$/d' ~/iso-profiles/manjaro/kde/Packages-Desktop
+sed -i '/^htop$/d' ~/iso-profiles/manjaro/kde/Packages-Desktop
+sed -i '/^kdeconnect$/d' ~/iso-profiles/manjaro/kde/Packages-Desktop
+
+read -p "Beliebige Taste drücken um Packages-Desktop zu kontrollieren und gegebenenfalls zu bearbeiten..."
+nano -w ~/iso-profiles/manjaro/kde/Packages-Desktop
+
 
     else
         print_info "Klone ISO-Profile Repository..."
