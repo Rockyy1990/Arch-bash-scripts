@@ -12,6 +12,7 @@ echo ""
 echo "Installation summary:"
 echo ""
 echo " - Chaotic AUR (optional)"
+echo " - BTRFS assistant and snapper (optional)"
 echo " - Update mirrors (reflector)"
 echo " - Core system packages: base-devel, efibootmgr, git, curl, ufw, fwupd, bash-completion, gvfs, samba, openssh, smartmontools, xfsdump, f2fs-tools, udftools, gnome-disk-utility"
 echo " - Development/runtime: python, pip, pyenv, deno"
@@ -70,7 +71,7 @@ fi
 
 
 echo ""
-read -p "First off all check and modifi the pacman.conf. Press any key to do that."
+read -p "Check and modifi the pacman.conf. Press any key to do that."
 sudo nano /etc/pacman.conf
 sudo pacman -Sy
 
@@ -102,7 +103,7 @@ echo ""
 
 echo "Install graphics (AMD)"
 sleep 2
-sudo pacman -S --needed --noconfirm mesa-utils opencl-mesa vulkan-mesa-implizit-layers vulkan-radeon vulkan-dzn vulkan-swrast vulkan-icd-loader vulkan-validation-layers
+sudo pacman -S --needed --noconfirm mesa-utils opencl-mesa vulkan-mesa-implicit-layers vulkan-radeon vulkan-dzn vulkan-swrast vulkan-icd-loader vulkan-validation-layers
 echo ""
 
 echo "Install needed stuff"
@@ -136,6 +137,9 @@ if [[ "$install_wine_steam" =~ ^(ja|j|yes|y)$ ]]; then
 
     # Install Windows api support and steam gaming platform
     sudo pacman -S --needed --noconfirm wine-staging wine-mono wine-gecko winetricks vkd3d libgdiplus steam protontricks gamemode
+
+    echo "32bit packages"
+    sudo pacman -S lib32-mesa lib32-vulkan-radeon
 
     echo "Install and config complete"
 else
