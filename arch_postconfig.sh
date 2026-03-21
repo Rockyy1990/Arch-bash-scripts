@@ -85,7 +85,7 @@ clear
 echo ""
 echo "Install system packages"
 sleep 2
-sudo pacman -S --needed --noconfirm base-devel fakeroot efibootmgr git curl ufw fwupd bash-completion gvfs samba openssh smartmontools xfsdump f2fs-tools udftools gnome-disk-utility
+sudo pacman -S --needed --noconfirm base-devel fakeroot efibootmgr git curl ufw fwupd bash-completion gvfs samba openssh gsmartcontrol xfsdump f2fs-tools udftools gnome-disk-utility
 sudo pacman -S --needed --noconfirm appmenu-gtk-module xdg-desktop-portal deno ethtool rsync python-pip pyenv python-av python-cachy python-opengl sof-firmware
 sudo pacman -S --needed --noconfirm wayland-protocols egl-wayland waylandpp plasma-wayland-protocols kwayland-integration
 echo ""
@@ -429,21 +429,14 @@ import shlex
 import subprocess
 import shutil
 
-def ensure_sudo():
-    # Wenn nicht als root ausgeführt, relaunch mit sudo -E für Umgebungsvariablen
-    if os.geteuid() != 0:
-        try:
-            cmd = ["sudo", "-E", sys.executable] + sys.argv
-            os.execvp("sudo", cmd)
-        except Exception as e:
-            print("Fehler beim Aufruf von sudo:", e)
-            sys.exit(1)
-
-def run_command(cmd, run_as_root=False):
+def run_command(cmd, use_sudo=False):
     try:
-        print(f"\nAusführen: {cmd}\n")
-        # split sicher anwenden
-        proc = subprocess.run(shlex.split(cmd), check=False)
+        full_cmd = cmd
+        if use_sudo:
+            # sudo -E bewahrt Umgebungsvariablen; keine exec/Relauch des ganzen Skripts
+            full_cmd = "sudo -E " + cmd
+        print(f"\nAusführen: {full_cmd}\n")
+        proc = subprocess.run(shlex.split(full_cmd), check=False)
         return proc.returncode
     except FileNotFoundError:
         print("Fehler: Befehl nicht gefunden.")
@@ -461,7 +454,7 @@ def pacman_install():
     cmd = f"pacman -S {pkg}"
     if noconfirm:
         cmd += " --noconfirm"
-    run_command(cmd, run_as_root=True)
+    run_command(cmd, use_sudo=True)
 
 def yay_install():
     pkg = input("Yay - Paketname zum Installieren: ").strip()
@@ -472,19 +465,19 @@ def yay_install():
     cmd = f"yay -S {pkg}"
     if noconfirm:
         cmd += " --noconfirm"
-    run_command(cmd, run_as_root=False)
+    # Bitte: yay sollte als normaler Benutzer laufen; yay fragt bei Bedarf nach Passwort
+    run_command(cmd, use_sudo=False)
 
 def yay_remove():
-    pkg = input("Yay - Paketname zum Entfernen (entfernt Paket, nicht Abhängigkeiten automatisch): ").strip()
+    pkg = input("Yay - Paketname zum Entfernen: ").strip()
     if not pkg:
         print("Kein Paketname angegeben.")
         return
-    # Optional: --noconfirm
     noconfirm = input("Mit --noconfirm entfernen? (j/N): ").strip().lower() == "j"
     cmd = f"yay -R {pkg}"
     if noconfirm:
         cmd += " --noconfirm"
-    run_command(cmd, run_as_root=False)
+    run_command(cmd, use_sudo=False)
 
 def yay_search():
     term = input("Yay - Suchbegriff: ").strip()
@@ -492,7 +485,7 @@ def yay_search():
         print("Kein Suchbegriff angegeben.")
         return
     cmd = f"yay -Ss {term}"
-    run_command(cmd, run_as_root=False)
+    run_command(cmd, use_sudo=False)
 
 def check_dependencies():
     missing = []
@@ -505,10 +498,10 @@ def check_dependencies():
 def menu():
     while True:
         print("\n--- Paket-Menü ---")
-        print("1) Paket mit pacman installieren")
-        print("2) Paket mit yay installieren")
-        print("3) Paket mit yay suchen")
-        print("4) Paket mit yay entfernen (yay -R)")
+        print("1) Paket mit pacman installieren (sudo)")
+        print("2) Paket mit yay installieren (als User)")
+        print("3) Paket mit yay suchen (als User)")
+        print("4) Paket mit yay entfernen (als User, yay -R)")
         print("5) Beenden")
         choice = input("Auswahl (1-5): ").strip()
         if choice == "1":
@@ -526,15 +519,10 @@ def menu():
             print("Ungültige Auswahl.")
 
 if __name__ == "__main__":
-    # Sicherstellen, dass sudo verfügbar ist und einmaliges Root-Prompt erfolgt
-    if shutil.which("sudo") is None:
-        print("Fehler: 'sudo' wurde nicht gefunden. Starte ohne Sudo-Erhöhung.")
-    else:
-        ensure_sudo()
-
     print("Hinweis: Dieses Skript führt Systembefehle aus. Verwende es mit Vorsicht.")
     check_dependencies()
     menu()
+
 EOF
 
 echo "Install and config complete"
