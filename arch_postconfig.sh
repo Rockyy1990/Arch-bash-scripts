@@ -1,30 +1,87 @@
 #!/bin/bash
 
+# ── Farben ───────────────────────────────────────────────────
+BOLD='\033[1m'
+DIM='\033[2m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+WHITE='\033[1;37m'
+NC='\033[0m'
+
+clear
+
+# ── Header ───────────────────────────────────────────────────
+echo -e "${CYAN}"
+echo "  ╔══════════════════════════════════════════════════════╗"
+echo "  ║         ARCH LINUX  —  POST-INSTALL SCRIPT           ║"
+echo "  ║                  by arch enjoyer                     ║"
+echo "  ╚══════════════════════════════════════════════════════╝"
+echo -e "${NC}"
+
+# ── Pflichtschritte ──────────────────────────────────────────
+echo -e "${WHITE}${BOLD}  PFLICHTSCHRITTE${NC}${DIM}  (werden immer ausgeführt)${NC}"
+echo -e "${CYAN}  ─────────────────────────────────────────────────────${NC}"
+
+echo -e "  ${GREEN}✔${NC}  Mirrors aktualisieren   ${DIM}(reflector)${NC}"
 echo ""
-echo "
-||==================================||
-|| # Archlinux postinstall script # ||
-||==================================||
-"
+echo -e "  ${GREEN}✔${NC}  Basis-Systempakete"
+echo -e "     ${DIM}base-devel, efibootmgr, git, curl, ufw, fwupd,${NC}"
+echo -e "     ${DIM}bash-completion, gvfs, samba, openssh, smartmontools,${NC}"
+echo -e "     ${DIM}xfsdump, f2fs-tools, udftools, gnome-disk-utility${NC}"
 echo ""
+echo -e "  ${GREEN}✔${NC}  Entwicklung & Runtime"
+echo -e "     ${DIM}python, pip, pyenv, deno${NC}"
+echo ""
+echo -e "  ${GREEN}✔${NC}  Wayland / X11 Support & Bibliotheken"
+echo ""
+echo -e "  ${GREEN}✔${NC}  Schriftarten"
+echo -e "     ${DIM}Noto, DejaVu, Liberation, OpenSans${NC}"
+echo ""
+echo -e "  ${GREEN}✔${NC}  AMD-Grafik"
+echo -e "     ${DIM}mesa, OpenCL, Vulkan${NC}"
+echo ""
+echo -e "  ${GREEN}✔${NC}  Multimedia & Apps"
+echo -e "     ${DIM}vivaldi (+ffmpeg), discord, qbittorrent, gwenview,${NC}"
+echo -e "     ${DIM}smplayer, ark, pipewire, ffmpeg, gstreamer-plugins${NC}"
+echo ""
+echo -e "  ${GREEN}✔${NC}  AUR-Helper: yay"
+echo -e "     ${DIM}onlyoffice-bin, protonup-qt-bin, ttf-ms-fonts,${NC}"
+echo -e "     ${DIM}ventoy-bin, nomachine, telegram-desktop-bin,${NC}"
+echo -e "     ${DIM}teams-for-linux-bin, bottles, timeshift + autosnap${NC}"
+echo ""
+echo -e "  ${GREEN}✔${NC}  Firewall, SSH, Journal, fstrim, I/O-Scheduler"
+echo -e "  ${GREEN}✔${NC}  /etc/environment AMD/Vulkan-Tweaks"
 
 echo ""
-echo "Installation summary:"
+
+# ── Optionale Schritte ───────────────────────────────────────
+echo -e "${WHITE}${BOLD}  OPTIONALE SCHRITTE${NC}${DIM}  (per Menü wählbar)${NC}"
+echo -e "${CYAN}  ─────────────────────────────────────────────────────${NC}"
+
+echo -e "  ${YELLOW}◆${NC}  Chaotic-AUR einrichten"
+echo -e "  ${YELLOW}◆${NC}  Snapper + btrfs-assistant          ${DIM}(nur BTRFS)${NC}"
+echo -e "  ${YELLOW}◆${NC}  Druckunterstützung                 ${DIM}(CUPS)${NC}"
+echo -e "  ${YELLOW}◆${NC}  Wine + Steam Gaming"
+echo -e "  ${YELLOW}◆${NC}  virt-manager / QEMU"
+echo -e "  ${YELLOW}◆${NC}  yt-dlp"
+echo -e "  ${YELLOW}◆${NC}  Performance-Tweaks                 ${DIM}(ananicy, preload, nohang…)${NC}"
+echo -e "  ${YELLOW}◆${NC}  System-Manager-Skripte             ${DIM}(Desktop-Verknüpfungen)${NC}"
+
 echo ""
-echo " - Chaotic AUR (optional)"
-echo " - BTRFS assistant and snapper (optional)"
-echo " - Update mirrors (reflector)"
-echo " - Core system packages: base-devel, efibootmgr, git, curl, ufw, fwupd, bash-completion, gvfs, samba, openssh, smartmontools, xfsdump, f2fs-tools, udftools, gnome-disk-utility"
-echo " - Development/runtime: python, pip, pyenv, deno"
-echo " - Wayland/X11 support and related libs"
-echo " - Fonts: Noto, DejaVu, Liberation, OpenSans"
-echo " - Graphics (AMD): mesa, OpenCL, Vulkan packages"
-echo " - Media & apps: vivaldi (+ffmpeg codecs), discord, qbittorrent, gwenview, smplayer, ark, pipewire, ffmpeg, gstreamer plugins"
-echo " - Optional: Printing (CUPS), Wine & Steam, virt-manager, yt-dlp"
-echo " - AUR helper: yay and selected AUR packages (onlyoffice-bin, protonup-qt-bin, ttf-ms-fonts, ventoy-bin, nomachine, telegram-desktop-bin, teams-for-linux-bin, bottles, timeshift + autosnap)"
-echo "......."
+
+# ── Trennlinie & Hinweis ─────────────────────────────────────
+echo -e "${CYAN}  ─────────────────────────────────────────────────────${NC}"
+echo -e "  ${DIM}Log wird gespeichert unter:${NC} ${WHITE}/tmp/arch_postinstall_<datum>.log${NC}"
+echo -e "${CYAN}  ─────────────────────────────────────────────────────${NC}"
+
 echo ""
-read -p "..Press any key to continue.."
+echo -e "  ${BOLD}${WHITE}Bereit?  Drücke${NC} ${GREEN}[ENTER]${NC} ${BOLD}${WHITE}um fortzufahren …${NC}"
+echo ""
+read -rp "  " _dummy
 clear
 
 
