@@ -554,12 +554,11 @@ print_banner() {
     clear
     echo -e "${BOLD}${BLUE}"
     echo "  ╔══════════════════════════════════════════════════════════════╗"
-    echo "  ║      ArchSetup v2.1 — Post-Installation Configurator       ║"
-    echo "  ║             Plasma Desktop  ·  Limine Bootloader           ║"
+    echo "  ║      ArchSetup v2.1 — Post-Installation Configurator         ║"
+    echo "  ║             Plasma Desktop  ·  Limine Bootloader             ║"
     echo "  ╚══════════════════════════════════════════════════════════════╝"
     echo -e "${RESET}"
-    printf "  ${BOLD}Benutzer:${RESET} ${CYAN}%-14s${RESET}  " "${USER}"
-    printf "${BOLD}Host:${RESET} ${CYAN}%-16s${RESET}  " "$(hostname)"
+    printf "${BOLD}Benutzer:${RESET} ${CYAN}%-14s${RESET}  " "${USER}"
     printf "${BOLD}Kernel:${RESET} ${CYAN}%s${RESET}\n" "$(uname -r)"
     sep
 }
