@@ -195,6 +195,7 @@ linux-headers
 mkinitcpio
 mkinitcpio-archiso
 mkinitcpio-nfs-utils
+sof-firmware
 
 # ── Bootloader (nur syslinux für BIOS; systemd-boot kommt aus archiso selbst) ─
 syslinux
@@ -207,8 +208,10 @@ memtest86+-efi
 dosfstools
 e2fsprogs
 btrfs-progs
+bcachefs-tools
 xfsprogs
 xfsdump
+jfsutils
 f2fs-tools
 udftools
 ntfs-3g
@@ -216,6 +219,7 @@ exfatprogs
 lvm2
 mdadm
 cryptsetup
+efibootmgr
 
 # ── Netzwerk ──────────────────────────────────────────────────────────────────
 networkmanager
@@ -240,6 +244,10 @@ arch-install-scripts
 gptfdisk
 parted
 smartmontools
+fwupd
+ethtool
+openssh
+openssl
 usbutils
 pciutils
 lshw
@@ -247,7 +255,6 @@ htop
 bash-completion
 man-db
 man-pages
-vim
 nano
 git
 zip
@@ -258,6 +265,7 @@ tar
 # ── Backup & Wiederherstellung ────────────────────────────────────────────────
 timeshift
 deja-dup
+clonezilla
 
 # ── Disk-Utilities ────────────────────────────────────────────────────────────
 gnome-disk-utility
@@ -276,6 +284,7 @@ mesa-utils
 vulkan-icd-loader
 vulkan-radeon
 vulkan-nouveau
+vulkan-intel
 vulkan-swrast
 vulkan-dzn
 vulkan-mesa-implicit-layers
@@ -313,8 +322,6 @@ ark
 kate
 kwrite
 konsole
-spectacle
-okular
 gwenview
 filelight
 kcalc
@@ -323,13 +330,14 @@ partitionmanager
 
 # ── Internet ──────────────────────────────────────────────────────────────────
 firefox
+firefox-i18n-de
+firefox-adblock-plus
 filezilla
 qbittorrent
 
 # ── Audio (PipeWire) ──────────────────────────────────────────────────────────
 pipewire
 pipewire-alsa
-pipewire-jack
 pipewire-pulse
 wireplumber
 gst-plugin-pipewire
@@ -343,6 +351,10 @@ ttf-dejavu
 
 # ── Drucken ───────────────────────────────────────────────────────────────────
 cups
+cups-pdf
+cups-filters
+ghostscript
+gutenprint
 print-manager
 
 # ── Sonstiges ─────────────────────────────────────────────────────────────────
