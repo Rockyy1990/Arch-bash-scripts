@@ -115,7 +115,7 @@ pacman_menu() {
             5)
                 print_header
                 print_warning "Leere Cache..."
-                sudo pacman -Scc
+                sudo pacman -Scc --noconfirm
                 if [ $? -eq 0 ]; then
                     print_success "Cache erfolgreich geleert"
                 else
@@ -126,14 +126,23 @@ pacman_menu() {
             6)
                 print_header
                 print_info "Führe Systemupgrade durch..."
-                sudo pacman -Syu
-                if [ $? -eq 0 ]; then
-                    print_success "Systemupgrade erfolgreich abgeschlossen"
-                else
-                    print_error "Fehler beim Systemupgrade"
-                fi
-                read -p "Drücke Enter um fortzufahren..."
-                ;;
+                sudo pacman -Syu --noconfirm
+               if [ $? -eq 0 ]; then
+                print_success "Systemupgrade erfolgreich abgeschlossen"
+               # Abfrage, ob neu gestartet werden soll
+               read -p "Möchtest du das System jetzt neu starten? (j/n): " restart_choice
+               if [[ "$restart_choice" =~ ^[Jj]$ ]]; then
+               echo "Starte das System neu..."
+               sudo reboot
+               else
+               echo "Neustart wurde abgelehnt. Du kannst das System später manuell neu starten."
+               fi
+               else
+               print_error "Fehler beim Systemupgrade"
+               fi
+               read -p "Drücke Enter um fortzufahren..."
+              ;;
+
             7)
                 pacman_repair_menu
                 ;;
@@ -385,16 +394,24 @@ yay_menu() {
                 ;;
             4)
                 print_header
-                print_info "Aktualisiere AUR-Pakete..."
-                yay -Syu
+                print_info "Führe Systemupgrade + AUR upgrade durch..."
+                yay -Syu --noconfirm
                 if [ $? -eq 0 ]; then
-                    print_success "AUR-Pakete erfolgreich aktualisiert"
+                print_success "Systemupgrade + AUR erfolgreich abgeschlossen"
+                # Abfrage, ob neu gestartet werden soll
+                read -p "Möchtest du das System jetzt neu starten? (j/n): " restart_choice
+                if [[ "$restart_choice" =~ ^[Jj]$ ]]; then
+                echo "Starte das System neu..."
+                sudo reboot
                 else
-                    print_error "Fehler beim Aktualisieren"
+                echo "Neustart wurde abgelehnt. Du kannst das System später manuell neu starten."
+                fi
+                else
+                print_error "Fehler beim Systemupgrade"
                 fi
                 read -p "Drücke Enter um fortzufahren..."
                 ;;
-                        5)
+            5)
                 return
                 ;;
             *)
