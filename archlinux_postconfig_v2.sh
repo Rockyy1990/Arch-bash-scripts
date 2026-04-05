@@ -226,7 +226,8 @@ setup_wine_steam() {
     pkg_install wine-staging winetricks wine-mono wine-gecko \
                 lib32-mesa lib32-vulkan-icd-loader \
                 lib32-alsa-lib lib32-alsa-plugins lib32-libpulse \
-                lib32-gnutls lib32-libldap lib32-libgpg-error
+                lib32-gnutls lib32-libldap lib32-libgpg-error \
+                vkd3d libgdiplus protontricks
     pkg_install steam
 
     frage "Lutris installieren?"   && pkg_install lutris
@@ -257,13 +258,13 @@ setup_virt() {
     grep -qE '(vmx|svm)' /proc/cpuinfo \
         || warn "CPU-Virtualisierung nicht erkannt – bitte im BIOS aktivieren."
 
-    pkg_install virt-manager qemu-full libvirt \
-                edk2-ovmf dnsmasq iptables-nft \
-                virt-viewer bridge-utils
+    pkg_install libvirt libvirt-python virt-manager qemu-full \
+                qemu-guest-agent libguestfs vde2 swtpm dnsmasq dmidecode
 
-    sudo systemctl enable --now libvirtd.service
-    sudo virsh net-autostart default 2>/dev/null || true
-    sudo virsh net-start    default 2>/dev/null || true
+    echo "Activate libvirt.."
+    sudo systemctl enable --now libvirtd.service virtlogd.service
+    sudo virsh net-autostart default
+    sudo virsh net-start default
     sudo usermod -aG libvirt,kvm "${USER}"
 
     if frage "IOMMU / PCI-Passthrough (Limine) konfigurieren?"; then
@@ -297,7 +298,7 @@ setup_ytdlp() {
 
     sudo curl -fsSL -o "${bin_path}" "${download_url}"
     sudo chmod a+rx "${bin_path}"
-    pkg_install ffmpeg python-mutagen python-pycryptodome
+    pkg_install ffmpeg deno python-mutagen python-pycryptodome
 
     ok "yt-dlp $(yt-dlp --version 2>/dev/null || echo 'unbekannt') → ${bin_path}"
 
