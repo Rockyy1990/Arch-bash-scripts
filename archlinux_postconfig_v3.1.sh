@@ -810,213 +810,249 @@ setup_arch_sys_management() {
     step "Arch System Management Script auf Desktop installieren"
     sep
 
-    local script_path="${HOME}/Schreibtisch/arch_sys_management.py"
+    local script_path="${HOME}/Schreibtisch/arch_sys_management.sh"
 
     if [[ ! -d "${HOME}/Schreibtisch" ]]; then
         warn "Verzeichnis ~/Schreibtisch nicht gefunden (kein deutsches KDE-Desktop-Verzeichnis?)."
         frage "Skript stattdessen im Home-Verzeichnis ablegen?" \
             || { warn "Arch System Management Script übersprungen."; return 0; }
-        script_path="${HOME}/arch_sys_management.py"
+        script_path="${HOME}/arch_sys_management.sh"
     fi
 
     log "Schreibe ${script_path} ..."
 
     tee "${script_path}" > /dev/null <<'EOF'
-#!/usr/bin/env python3
+#!/usr/bin/env bash
 
-import os
-import subprocess
-import sys
+# ============================================================
+#   Archlinux Management Tool
+#   Farben: Menü=Orange | Pacman=Hellblau | Warnung=Rot
+# ============================================================
 
-# ── Farben ────────────────────────────────────────────────────────────────────
-ORANGE = '\033[38;5;208m'
-BLUE   = '\033[34m'
-GREEN  = '\033[32m'
-RED    = '\033[31m'
-BOLD   = '\033[1m'
-RESET  = '\033[0m'
+# --- Farbdefinitionen ---
+RESET="\033[0m"
+ORANGE="\033[38;5;214m"       # Menüfarbe
+HELLBLAU="\033[38;5;117m"     # Pacman-Farbe
+ROT="\033[38;5;196m"          # Warnfarbe
+WEISS="\033[1;37m"            # Hervorhebung
+GRAU="\033[38;5;245m"         # Trennlinien / dezente Elemente
+GRUEN="\033[38;5;82m"         # Erfolg / Info
 
-# ── Hilfsfunktionen ───────────────────────────────────────────────────────────
-def clear_screen():
-    os.system('clear')
+# --- Hilfsfunktionen ---
+trennlinie_kurz() {
+    echo -e "${GRAU}  ---------------------------------------${RESET}"
+}
 
-def print_menu():
-    clear_screen()
-    border = f"{ORANGE}{'═'*52}{RESET}"
-    print(border)
-    print(f"{ORANGE}{BOLD}{'ARCH LINUX SYSTEM MANAGEMENT':^52}{RESET}")
-    print(border)
-    entries = [
-        ("1", "System Upgrade"),
-        ("2", "System Upgrade mit YAY"),
-        ("3", "Pacman Cache leeren"),
-        ("4", "Arch Linux Keyring erneuern"),
-        ("5", "Pacman Datenbank aktualisieren"),
-        ("6", "Verwaiste Pakete entfernen"),   # NEU
-        ("7", "Systemdienste auf Fehler prüfen"),  # NEU
-        ("8", "Beenden"),
-    ]
-    for num, label in entries:
-        print(f"  {ORANGE}{num}.{RESET}  {label}")
-    print()
+trennlinie_header() {
+    echo -e "${GRAU}  ---------------------------------${RESET}"
+}
 
-def success_message():
-    print(f"\n{GREEN}✔ Erfolgreich ausgeführt!{RESET}\n")
-    input("Drücke Enter zum Fortfahren...")
+kernel_version() {
+    echo -e "${GRUEN}  Kernel: $(uname -r)${RESET}"
+}
 
-def error_message(msg: str):
-    print(f"\n{RED}✘ Fehler: {msg}{RESET}\n")
-    input("Drücke Enter zum Fortfahren...")
+pause() {
+    echo ""
+    echo -e "${GRAU}  [Eingabe drücken, um fortzufahren...]${RESET}"
+    read -r
+}
 
-def confirm(prompt: str) -> bool:
-    """Gibt True zurück wenn der Nutzer mit 'j' oder 'J' bestätigt."""
-    answer = input(f"{ORANGE}{prompt} [j/N]: {RESET}").strip().lower()
-    return answer == 'j'
+bestaetigung() {
+    local frage="$1"
+    echo -e "${ROT}  ⚠  ${frage} [j/N]: ${RESET}\c"
+    read -r antwort
+    [[ "$antwort" =~ ^[jJ]$ ]]
+}
 
-def execute_command(command: str, description: str, require_confirm: bool = False):
-    """Führt einen Shell-Befehl aus und gibt Erfolg/Fehler aus."""
-    print(f"\n{ORANGE}▶ {description}{RESET}")
-    print(f"  {BOLD}Befehl:{RESET} {command}\n")
+# --- Menü anzeigen ---
+zeige_menue() {
+    clear
+    echo ""
+    trennlinie_header
+    echo -e "${ORANGE}      Archlinux Management Tool${RESET}"
+    trennlinie_header
+    kernel_version
+    trennlinie_kurz
 
-    if require_confirm and not confirm("Wirklich fortfahren?"):
-        print(f"{BLUE}Abgebrochen.{RESET}")
-        input("Drücke Enter zum Fortfahren...")
-        return
+    echo -e "${HELLBLAU}  1.${RESET}  ${WEISS}Pacman Paket Cache löschen${RESET}"
+    echo -e "${HELLBLAU}  2.${RESET}  ${WEISS}Pacman Repos aktualisieren${RESET}"
+    echo -e "${HELLBLAU}  3.${RESET}  ${WEISS}Pacman archlinux-keyring erneuern${RESET}"
+    trennlinie_kurz
 
-    try:
-        subprocess.run(command, shell=True, check=True)
-        success_message()
-    except subprocess.CalledProcessError as e:
-        error_message(str(e))
-    except Exception as e:
-        error_message(str(e))
+    echo -e "${HELLBLAU}  4.${RESET}  ${WEISS}Archlinux system upgrade (noconfirm)${RESET}"
+    echo -e "${HELLBLAU}  5.${RESET}  ${WEISS}Archlinux system upgrade (yay -Syu) ${RESET}"
+    trennlinie_kurz
 
-# ── Neue Funktion 1: Verwaiste Pakete entfernen ───────────────────────────────
-def remove_orphans():
-    """
-    Listet verwaiste Pakete (als Abhängigkeit installiert, aber nicht mehr
-    benötigt) und entfernt sie nach Bestätigung.
-    """
-    print(f"\n{ORANGE}▶ Verwaiste Pakete suchen...{RESET}\n")
-    try:
-        result = subprocess.run(
-            'pacman -Qtdq',
-            shell=True, capture_output=True, text=True
-        )
-        orphans = result.stdout.strip()
+    echo -e "${HELLBLAU}  6.${RESET}  ${WEISS}Zeige verwaiste Pakete${RESET}"
+    echo -e "${ROT}  7.${RESET}  ${WEISS}Lösche verwaiste Pakete${RESET}"
+    trennlinie_kurz
 
-        if not orphans:
-            print(f"{GREEN}✔ Keine verwaisten Pakete gefunden.{RESET}\n")
-            input("Drücke Enter zum Fortfahren...")
-            return
+    echo -e "${HELLBLAU}  8.${RESET}  ${WEISS}Pakete installieren (yay)${RESET}"
+    echo -e "${ROT}  9.${RESET}  ${WEISS}Pakete entfernen (yay)${RESET}"
+    trennlinie_kurz
 
-        print(f"{ORANGE}Gefundene verwaiste Pakete:{RESET}")
-        for pkg in orphans.splitlines():
-            print(f"  {BLUE}•{RESET} {pkg}")
-        print()
+    echo -e "${GRAU} 10.${RESET}  ${WEISS}Pacman config anzeigen (nano/sudo)${RESET}"
+    echo -e "${GRAU} 11.${RESET}  ${WEISS}Pacman mirrors anzeigen (nano/sudo)${RESET}"
+    echo -e "${GRAU} 12.${RESET}  ${WEISS}Journal anzeigen${RESET}"
+    trennlinie_kurz
 
-        if confirm("Alle verwaisten Pakete entfernen?"):
-            subprocess.run(
-                'sudo pacman -Rns $(pacman -Qtdq) --noconfirm',
-                shell=True, check=True
-            )
-            success_message()
-        else:
-            print(f"{BLUE}Abgebrochen.{RESET}")
-            input("Drücke Enter zum Fortfahren...")
+    echo -e "${ROT} 13.${RESET}  ${WEISS}System neustart${RESET}"
+    echo -e "${GRAU} 14.${RESET}  ${WEISS}Script beenden${RESET}"
+    trennlinie_kurz
+    echo ""
+    echo -e "${ORANGE}  Auswahl: ${RESET}\c"
+}
 
-    except subprocess.CalledProcessError as e:
-        error_message(str(e))
-    except Exception as e:
-        error_message(str(e))
+# --- Aktionen ---
 
-# ── Neue Funktion 2: Fehlgeschlagene Systemdienste anzeigen ───────────────────
-def check_failed_services():
-    """
-    Zeigt alle fehlgeschlagenen systemd-Dienste an und bietet an,
-    den Status eines bestimmten Dienstes detailliert abzurufen.
-    """
-    print(f"\n{ORANGE}▶ Fehlgeschlagene Systemdienste prüfen...{RESET}\n")
-    try:
-        result = subprocess.run(
-            'systemctl --failed --no-pager --no-legend',
-            shell=True, capture_output=True, text=True
-        )
-        output = result.stdout.strip()
+aktion_1() {
+    echo -e "\n${HELLBLAU}  → Paket Cache wird geleert...${RESET}\n"
+    sudo pacman -Scc --noconfirm
+    pause
+}
 
-        if not output:
-            print(f"{GREEN}✔ Keine fehlgeschlagenen Dienste gefunden.{RESET}\n")
-            input("Drücke Enter zum Fortfahren...")
-            return
+aktion_2() {
+    echo -e "\n${HELLBLAU}  → Pacman Repos werden aktualisiert...${RESET}\n"
+    sudo pacman -Sy
+    sudo pacman -Fyy
+    pause
+}
 
-        print(f"{RED}Fehlgeschlagene Dienste:{RESET}")
-        services = []
-        for line in output.splitlines():
-            parts = line.split()
-            if parts:
-                services.append(parts[0])
-                print(f"  {RED}✘{RESET} {line}")
-        print()
+aktion_3() {
+    echo -e "\n${HELLBLAU}  → archlinux-keyring wird erneuert...${RESET}\n"
+    sudo pacman -Sy --noconfirm archlinux-keyring
+    sudo pacman-key --init
+    sudo pacman-key --populate archlinux
+    pause
+}
 
-        if services and confirm("Status eines Dienstes genauer anzeigen?"):
-            service = input(
-                f"{ORANGE}Dienstname eingeben: {RESET}"
-            ).strip()
-            if service:
-                print()
-                subprocess.run(
-                    f'systemctl status {service} --no-pager',
-                    shell=True
-                )
-                print()
+aktion_4() {
+    echo -e "\n${HELLBLAU}  → System upgrade wird durchgeführt...${RESET}\n"
+    sudo pacman -Syu --noconfirm
+    pause
+}
 
-        input("Drücke Enter zum Fortfahren...")
+aktion_5() {
+    echo -e "\n${HELLBLAU}  → System upgrade mit yay wird durchgeführt...${RESET}\n"
+    yay -Syu --noconfirm
+    pause
+}
 
-    except Exception as e:
-        error_message(str(e))
+aktion_6() {
+    echo -e "\n${HELLBLAU}  → Verwaiste Pakete:${RESET}\n"
+    verwaist=$(pacman -Qdt 2>/dev/null)
+    if [[ -z "$verwaist" ]]; then
+        echo -e "${GRUEN}  Keine verwaisten Pakete gefunden.${RESET}"
+    else
+        echo -e "${WEISS}$verwaist${RESET}"
+    fi
+    pause
+}
 
-# ── Hauptprogramm ─────────────────────────────────────────────────────────────
-def main():
-    actions = {
-        '1': lambda: execute_command('sudo pacman -Syu',               'System Upgrade'),
-        '2': lambda: execute_command('yay -Syu',                       'System Upgrade mit YAY'),
-        '3': lambda: execute_command('sudo pacman -Scc --noconfirm',   'Pacman Cache leeren',
-                                     require_confirm=True),
-        '4': lambda: execute_command(
-                'sudo pacman-key --init && sudo pacman-key --populate archlinux',
-                'Arch Linux Keyring erneuern'),
-        '5': lambda: execute_command('sudo pacman -Fyy',               'Pacman Datenbank aktualisieren'),
-        '6': remove_orphans,
-        '7': check_failed_services,
-    }
+aktion_7() {
+    verwaist=$(pacman -Qdtq 2>/dev/null)
+    if [[ -z "$verwaist" ]]; then
+        echo -e "\n${GRUEN}  Keine verwaisten Pakete zum Löschen vorhanden.${RESET}"
+    else
+        echo -e "\n${ROT}  Folgende Pakete werden entfernt:${RESET}"
+        echo -e "${WEISS}$verwaist${RESET}\n"
+        if bestaetigung "Verwaiste Pakete wirklich löschen?"; then
+            sudo pacman -Rns $verwaist --noconfirm
+        else
+            echo -e "${GRAU}  Abgebrochen.${RESET}"
+        fi
+    fi
+    pause
+}
 
-    while True:
-        print_menu()
-        choice = input(f"{ORANGE}Wähle eine Option (1-8): {RESET}").strip()
+aktion_8() {
+    echo -e "${ORANGE}  Paketname(n) eingeben: ${RESET}\c"
+    read -r pakete
+    if [[ -n "$pakete" ]]; then
+        echo -e "\n${HELLBLAU}  → Installiere: ${pakete}${RESET}\n"
+        yay -S --needed --noconfirm $pakete
+    else
+        echo -e "${ROT}  Kein Paketname angegeben.${RESET}"
+    fi
+    pause
+}
 
-        if choice == '8':
-            clear_screen()
-            print(f"{ORANGE}Auf Wiedersehen!{RESET}\n")
-            sys.exit(0)
+aktion_9() {
+    echo -e "${ORANGE}  Paketname(n) eingeben: ${RESET}\c"
+    read -r pakete
+    if [[ -n "$pakete" ]]; then
+        echo -e "\n${ROT}  Folgende Pakete werden entfernt: ${pakete}${RESET}\n"
+        if bestaetigung "Pakete wirklich entfernen?"; then
+            yay -R --noconfirm $pakete
+        else
+            echo -e "${GRAU}  Abgebrochen.${RESET}"
+        fi
+    else
+        echo -e "${ROT}  Kein Paketname angegeben.${RESET}"
+    fi
+    pause
+}
 
-        action = actions.get(choice)
-        if action:
-            action()
-        else:
-            print(f"{RED}Ungültige Auswahl. Bitte 1–8 eingeben.{RESET}")
-            input("Drücke Enter zum Fortfahren...")
+aktion_10() {
+    echo -e "\n${GRAU}  → Pacman config wird geöffnet...${RESET}\n"
+    sudo nano /etc/pacman.conf
+}
 
-if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        print(f"\n{ORANGE}Skript beendet.{RESET}\n")
-        sys.exit(0)
+aktion_11() {
+    echo -e "\n${GRAU}  → Pacman mirrors wird geöffnet...${RESET}\n"
+    sudo nano /etc/pacman.d/mirrorlist
+}
+
+aktion_12() {
+    echo -e "\n${GRAU}  → Journal wird angezeigt (q zum Beenden)...${RESET}\n"
+    sudo journalctl -xe --no-pager | less
+}
+
+aktion_13() {
+    if bestaetigung "System wirklich neu starten?"; then
+        echo -e "\n${ROT}  → System wird neu gestartet...${RESET}\n"
+        sudo reboot
+    else
+        echo -e "${GRAU}  Abgebrochen.${RESET}"
+        pause
+    fi
+}
+
+# --- Hauptschleife ---
+while true; do
+    zeige_menue
+    read -r auswahl
+
+    case "$auswahl" in
+        1)  aktion_1  ;;
+        2)  aktion_2  ;;
+        3)  aktion_3  ;;
+        4)  aktion_4  ;;
+        5)  aktion_5  ;;
+        6)  aktion_6  ;;
+        7)  aktion_7  ;;
+        8)  aktion_8  ;;
+        9)  aktion_9  ;;
+        10) aktion_10 ;;
+        11) aktion_11 ;;
+        12) aktion_12 ;;
+        13) aktion_13 ;;
+        14)
+            echo -e "\n${GRAU}  Auf Wiedersehen.${RESET}\n"
+            exit 0
+            ;;
+        *)
+            echo -e "\n${ROT}  Ungültige Auswahl: \"${auswahl}\"${RESET}"
+            pause
+            ;;
+    esac
+done
+
 EOF
 
     chmod +x "${script_path}"
     ok "arch_sys_management.py erstellt: ${script_path}"
-    hint "Starten mit: python3 ${script_path}"
+    hint "Starten mit: bash ${script_path}"
     hint "Oder direkt: ${script_path}"
 }
 
