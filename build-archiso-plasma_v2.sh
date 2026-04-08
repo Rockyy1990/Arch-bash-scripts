@@ -58,7 +58,11 @@ banner()  {
 # =============================================================================
 banner "Schritt 0: Voraussetzungen prüfen"
 
-[[ "${EUID}" -ne 0 ]] && die "Bitte als root ausführen: sudo bash \$0"
+if [[ "${EUID}" -ne 0 ]]; then
+    echo "Root-Rechte erforderlich – sudo-Passwort eingeben:"
+    exec sudo bash "$0" "$@"
+fi
+
 [[ ! -f /etc/arch-release ]] && die "Dieses Script läuft nur auf Arch Linux!"
 
 # ─── Host-Pakete prüfen und installieren ─────────────────────────────────────
@@ -455,7 +459,9 @@ cat > "${AIROOTFS}/etc/sudoers.d/liveuser" << EOF
 ${LIVE_USER} ALL=(ALL:ALL) NOPASSWD: ALL
 EOF
 
+chmod 0440 "${AIROOTFS}/etc/sudoers.d/liveuser"
 ok "sudo-Regel für ${LIVE_USER} geschrieben."
+
 
 # =============================================================================
 # SCHRITT 8: SDDM Autologin (Plasma Wayland)
