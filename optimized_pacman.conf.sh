@@ -4,8 +4,10 @@ echo ""
 read -p "Optimierte pacman.conf. Beliebige Taste drücken um zu starten..."
 echo ""
 
-# Installiere aria2
-sudo pacman -S --needed --noconfirm aria2
+# Installiere aria2 und reflector
+sudo pacman -S --needed --noconfirm aria2 reflector
+sudo reflector --country Germany --latest 14 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+sudo pacman -Sy
 clear
 
 update_pacman_conf() {
