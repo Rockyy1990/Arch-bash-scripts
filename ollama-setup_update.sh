@@ -22,7 +22,7 @@ function check_deps() {
   for cmd in pacman curl fzf; do
     if ! command -v "${cmd}" &>/dev/null; then
       err "${cmd} nicht gefunden — installieren mit: sudo pacman -S ${cmd}"
-      (( fehlend++ )) || true
+      fehlend=$(( fehlend + 1 ))
     fi
   done
   (( fehlend == 0 )) || exit 1
@@ -71,7 +71,36 @@ function service_status() {
   fi
 }
 
-# ── Hauptmenü ─────────────────────────────────────────────────────────────────
+# Physische CPU-Kerne ermitteln — LANG=C für Locale-Unabhängigkeit
+function get_phys_cores() {
+  local cores log_cores
+  cores=$(LANG=C lscpu | awk '/^Core\(s\) per socket:/{c=$NF} /^Socket\(s\):/{s=$NF} END{print c*s}')
+  log_cores=$(nproc)
+  [[ -z "${cores}" || "${cores}" == "0" ]] && cores="${log_cores}"
+  echo "${cores}"
+}
+
+# Lokale Ollama-Modelle als zeilenweise Liste ausgeben
+function get_local_models() {
+  ollama list 2>/dev/null | awk 'NR>1 && $1!="" {print $1}' || true
+}
+
+# ~/Ollama_config anlegen falls nicht vorhanden
+function ensure_config_dir() {
+  local config_dir="${HOME}/Ollama_config"
+  if [[ ! -d "${config_dir}" ]]; then
+    mkdir -p "${config_dir}"
+    ok "Konfigurationsordner erstellt: ${config_dir}"
+  fi
+}
+
+# Einheitliche Warnung wenn kein AUR-Helper gefunden
+function warn_no_aur() {
+  err "Kein AUR-Helper gefunden (yay oder paru wird benötigt)."
+  warn "yay installieren:"
+  warn "  git clone https://aur.archlinux.org/yay.git"
+  warn "  cd yay && makepkg -si"
+}
 function show_menu() {
   local w
   w=$(dynamic_width)
@@ -79,12 +108,16 @@ function show_menu() {
   draw_line "${w}"
   echo -e "${C_BOLD}  Ollama Manager  //  Arch Linux${C_RESET}   [ollama: $(service_status)]"
   draw_line "${w}"
-  echo -e "  ${C_CYAN}1${C_RESET}  Ollama + llm-manager installieren (GPU)"
-  echo -e "  ${C_CYAN}2${C_RESET}  KI-Modelle verwalten"
-  echo -e "  ${C_CYAN}3${C_RESET}  Deinstallation"
-  echo -e "  ${C_CYAN}4${C_RESET}  CPU-only Setup + Systemoptimierung"
+  echo -e "  ${C_BOLD}── Installation ──────────────────────────────${C_RESET}"
+  echo -e "  ${C_CYAN}1${C_RESET}  Ollama + llm-manager installieren (GPU generisch)"
+  echo -e "  ${C_CYAN}2${C_RESET}  AMD Ryzen + Vulkan Setup + Systemoptimierung"
+  echo -e "  ${C_CYAN}3${C_RESET}  CPU-only Setup + Systemoptimierung"
+  echo -e "  ${C_BOLD}── Verwaltung ────────────────────────────────${C_RESET}"
+  echo -e "  ${C_CYAN}4${C_RESET}  KI-Modelle verwalten"
   echo -e "  ${C_CYAN}5${C_RESET}  Modelfile-Assistent"
   echo -e "  ${C_CYAN}6${C_RESET}  Opencode nachinstallieren"
+  echo -e "  ${C_BOLD}── System ────────────────────────────────────${C_RESET}"
+  echo -e "  ${C_CYAN}7${C_RESET}  Deinstallation"
   echo -e "  ${C_CYAN}q${C_RESET}  Beenden"
   draw_line "${w}"
 }
@@ -101,6 +134,7 @@ function install_ollama() {
   warn "Nicht benötigte Backends verursachen keine Fehler, belegen aber Speicher."
   warn "Hinweis: Nur ein Backend gleichzeitig aktiv — ROCm hat Vorrang vor Vulkan."
   echo
+  local do_rocm do_vulkan
   read -rp "  ollama-rocm   installieren (AMD)? [j/N]: " do_rocm
   read -rp "  ollama-vulkan installieren (iGPU)? [j/N]: " do_vulkan
 
@@ -114,15 +148,14 @@ function install_ollama() {
 
   # opencode optional — llm-manager immer
   info "Installiere AUR-Paket: llm-manager …"
+  local do_opencode
   read -rp "  opencode ebenfalls installieren? (KI-gestützter Code-Editor) [j/N]: " do_opencode
   local aur_pkgs=("llm-manager")
   [[ "${do_opencode,,}" == "j" ]] && aur_pkgs+=("opencode")
 
   if [[ -z "${aur_helper}" ]]; then
-    err "Kein AUR-Helper gefunden (yay oder paru wird benötigt)."
-    warn "yay zuerst installieren, dann Option 1 erneut ausführen:"
-    warn "  git clone https://aur.archlinux.org/yay.git"
-    warn "  cd yay && makepkg -si"
+    warn_no_aur
+    warn "Nach Installation von yay Option 1 erneut ausführen."
     warn "AUR-Pakete werden übersprungen."
   else
     "${aur_helper}" -S --needed --noconfirm "${aur_pkgs[@]}"
@@ -136,10 +169,12 @@ function install_ollama() {
   sudo systemctl enable --now ollama
   ok "ollama.service ist aktiv."
 
-  # Konfig-Ordner anlegen mit README
+  # Konfig-Ordner anlegen + README nur beim ersten Mal
   local config_dir="${HOME}/Ollama_config"
-  if [[ ! -d "${config_dir}" ]]; then
-    mkdir -p "${config_dir}"
+  ensure_config_dir
+  if [[ -f "${config_dir}/README.txt" ]]; then
+    warn "${config_dir} existiert bereits — README wird nicht überschrieben."
+  else
     cat > "${config_dir}/README.txt" << 'EOF'
 Ollama Modell-Konfigurationsordner
 ====================================
@@ -168,10 +203,7 @@ OLLAMA_MODELS (optional — Speicherort für Modell-Binaries ändern):
   Eintragen in ~/.bashrc oder ~/.zshrc, danach:
   systemctl --user restart ollama  (oder: sudo systemctl restart ollama)
 EOF
-    ok "Konfigurationsordner erstellt: ${config_dir}"
     ok "README.txt mit Kurzanleitung wurde abgelegt."
-  else
-    warn "${config_dir} existiert bereits — wird nicht überschrieben."
   fi
 
   echo
@@ -199,7 +231,7 @@ function list_local_models() {
   require_ollama || return
   local out
   out=$(ollama list 2>/dev/null || true)
-  if [[ -z "${out}" ]] || [[ "${out}" == NAME* && $(echo "${out}" | wc -l) -le 1 ]]; then
+  if [[ -z "${out}" ]] || [[ "${out}" == NAME* && $(wc -l <<< "${out}") -le 1 ]]; then
     warn "Keine lokalen Modelle installiert."
     warn "Hinweis: Modelle herunterladen über Option 2 → Modell herunterladen."
   else
@@ -210,13 +242,50 @@ function list_local_models() {
 
 function pull_models() {
   require_ollama || return
-  info "Lade Modellliste … (Leertaste=auswählen, Enter=bestätigen, Esc=abbrechen)"
-  warn "Hinweis: Modellgröße variiert stark — kleine Modelle (z.B. qwen2.5:1.5b) ~1 GB,"
-  warn "         große Modelle (z.B. llama3.3:70b) können über 40 GB groß sein."
+
+  local w
+  w=$(dynamic_width)
+  echo
+  draw_line "${w}"
+  echo -e "${C_BOLD}  Empfohlene Modelle — Namen zum Kopieren${C_RESET}"
+  draw_line "${w}"
+  echo -e "${C_BOLD}  Allgemein / Chat:${C_RESET}"
+  echo -e "  ${C_CYAN}llama3.2:3b${C_RESET}         (Meta, schnell, gut für CPU, ~2 GB)"
+  echo -e "  ${C_CYAN}llama3.1:8b${C_RESET}         (Meta, ausgewogen, ~5 GB)"
+  echo -e "  ${C_CYAN}llama3.3:70b${C_RESET}        (Meta, sehr leistungsfähig, ~43 GB)"
+  echo -e "  ${C_CYAN}mistral:7b${C_RESET}          (Mistral AI, schnell & präzise, ~4 GB)"
+  echo -e "  ${C_CYAN}gemma2:2b${C_RESET}           (Google, sehr kompakt, ~1.6 GB)"
+  echo -e "  ${C_CYAN}gemma2:9b${C_RESET}           (Google, hohe Qualität, ~6 GB)"
+  echo
+  echo -e "${C_BOLD}  Code / Entwicklung:${C_RESET}"
+  echo -e "  ${C_CYAN}qwen2.5-coder:7b${C_RESET}    (Alibaba, Codegenerierung, ~5 GB)"
+  echo -e "  ${C_CYAN}qwen2.5-coder:32b${C_RESET}   (Alibaba, top Codequalität, ~20 GB)"
+  echo -e "  ${C_CYAN}deepseek-coder-v2:16b${C_RESET} (DeepSeek, stark für Code, ~9 GB)"
+  echo -e "  ${C_CYAN}codellama:7b${C_RESET}        (Meta, Code & Erklärungen, ~4 GB)"
+  echo
+  echo -e "${C_BOLD}  Kompakt / CPU-optimiert:${C_RESET}"
+  echo -e "  ${C_CYAN}qwen2.5:1.5b${C_RESET}        (Alibaba, sehr klein, ~1 GB)"
+  echo -e "  ${C_CYAN}qwen2.5:3b${C_RESET}          (Alibaba, klein & gut, ~2 GB)"
+  echo -e "  ${C_CYAN}phi3:mini${C_RESET}           (Microsoft, effizient, ~2.3 GB)"
+  echo -e "  ${C_CYAN}phi4:14b${C_RESET}            (Microsoft, starke Reasoning, ~9 GB)"
+  echo -e "  ${C_CYAN}smollm2:1.7b${C_RESET}        (HuggingFace, extrem klein, ~1 GB)"
+  echo
+  echo -e "${C_BOLD}  Mehrsprachig / Deutsch:${C_RESET}"
+  echo -e "  ${C_CYAN}qwen2.5:7b${C_RESET}          (Alibaba, gutes Deutsch, ~5 GB)"
+  echo -e "  ${C_CYAN}aya:8b${C_RESET}              (Cohere, 23 Sprachen inkl. Deutsch, ~5 GB)"
+  echo -e "  ${C_CYAN}mistral-nemo:12b${C_RESET}    (Mistral, multilingual, ~7 GB)"
+  draw_line "${w}"
+  warn "Format für ollama pull: ollama pull <name>  (z.B. ollama pull llama3.2:3b)"
+  warn "Ohne Tag wird automatisch das kleinste verfügbare Modell geladen."
+  echo
+
+  info "Lade Online-Modellliste … (Leertaste=auswählen, Enter=bestätigen, Esc=abbrechen)"
+  warn "Größenhinweis: ~1 GB (1.5b) bis >40 GB (70b) — Speicher vorher prüfen."
   local model_list selected
   model_list=$(fetch_available_models 2>/dev/null || true)
   if [[ -z "${model_list}" ]]; then
-    warn "Modellliste leer — Internetverbindung prüfen."
+    warn "Online-Liste nicht erreichbar — Modellnamen oben manuell eingeben:"
+    warn "  ollama pull <name>"
     return
   fi
 
@@ -241,7 +310,7 @@ function pull_models() {
 function update_models() {
   require_ollama || return
   local local_models
-  local_models=$(ollama list 2>/dev/null | awk 'NR>1 && $1!="" {print $1}' || true)
+  local_models=$(get_local_models)
 
   if [[ -z "${local_models}" ]]; then
     warn "Keine lokalen Modelle gefunden — nichts zu aktualisieren."
@@ -270,7 +339,7 @@ function update_models() {
 function remove_models() {
   require_ollama || return
   local local_models
-  local_models=$(ollama list 2>/dev/null | awk 'NR>1 && $1!="" {print $1}' || true)
+  local_models=$(get_local_models)
 
   if [[ -z "${local_models}" ]]; then
     warn "Keine lokalen Modelle installiert."
@@ -289,6 +358,7 @@ function remove_models() {
 
   warn "Werden gelöscht: $(echo "${selected}" | tr '\n' ' ')"
   warn "Achtung: Modell-Dateien werden unwiderruflich entfernt!"
+  local confirm
   read -rp "  Wirklich löschen? [j/N]: " confirm
   [[ "${confirm,,}" != "j" ]] && { info "Abgebrochen."; return; }
 
@@ -332,6 +402,7 @@ function model_menu() {
 function _remove_models_only() {
   warn "Alle Modelldaten unter ~/.ollama werden DAUERHAFT gelöscht."
   warn "Eigene Modelfiles in ~/Ollama_config bleiben erhalten."
+  local confirm
   read -rp "  Zur Bestätigung 'ja' eingeben: " confirm
   [[ "${confirm}" != "ja" ]] && { info "Abgebrochen."; return; }
 
@@ -369,6 +440,7 @@ function _remove_packages_only() {
 
   warn "Werden entfernt: ${pkgs[*]}"
   warn "Modelldaten (~/.ollama) und Configs bleiben erhalten."
+  local confirm
   read -rp "  Bestätigen mit 'ja': " confirm
   [[ "${confirm}" != "ja" ]] && { info "Abgebrochen."; return; }
 
@@ -391,17 +463,22 @@ function _do_remove_packages() {
 function _remove_configs_only() {
   local config_dir="${HOME}/Ollama_config"
   local drop_file="/etc/systemd/system/ollama.service.d/cpu-optimized.conf"
+  local drop_amd="/etc/systemd/system/ollama.service.d/amd-vulkan.conf"
   local sysctl_file="/etc/sysctl.d/99-ollama-cpu.conf"
+  local sysctl_amd="/etc/sysctl.d/99-ollama-amd-vulkan.conf"
   local thp_file="/etc/tmpfiles.d/ollama-thp.conf"
 
   echo
   info "Folgende Einträge werden entfernt (falls vorhanden):"
   echo -e "  ${C_YELLOW}  ${config_dir}${C_RESET}   (eigene Modelfiles)"
   echo -e "  ${C_YELLOW}  ${drop_file}${C_RESET}"
+  echo -e "  ${C_YELLOW}  ${drop_amd}${C_RESET}"
   echo -e "  ${C_YELLOW}  ${sysctl_file}${C_RESET}"
+  echo -e "  ${C_YELLOW}  ${sysctl_amd}${C_RESET}"
   echo -e "  ${C_YELLOW}  ${thp_file}${C_RESET}"
   echo
   warn "Achtung: Eigene Modelfiles in ${config_dir} gehen verloren!"
+  local confirm
   read -rp "  Bestätigen mit 'ja': " confirm
   [[ "${confirm}" != "ja" ]] && { info "Abgebrochen."; return; }
 
@@ -413,7 +490,7 @@ function _remove_configs_only() {
   fi
 
   local removed_sysctl=0
-  for f in "${drop_file}" "${sysctl_file}" "${thp_file}"; do
+  for f in "${drop_file}" "${drop_amd}" "${sysctl_file}" "${sysctl_amd}" "${thp_file}"; do
     if [[ -f "${f}" ]]; then
       sudo rm -f "${f}"
       ok "${f} gelöscht."
@@ -437,6 +514,7 @@ function _remove_all_confirm() {
   warn "  - Modelle:   ~/.ollama  (DAUERHAFT)"
   warn "  - Configs:   ~/Ollama_config, systemd-Override, sysctl, tmpfiles"
   echo
+  local confirm
   read -rp "  Zur Bestätigung 'ja' eingeben: " confirm
   [[ "${confirm}" != "ja" ]] && { info "Abgebrochen."; return; }
 
@@ -456,7 +534,9 @@ function _remove_all_confirm() {
   echo
   # Config-Dateien direkt ohne erneute Abfrage entfernen
   for f in "/etc/systemd/system/ollama.service.d/cpu-optimized.conf" \
+            "/etc/systemd/system/ollama.service.d/amd-vulkan.conf" \
             "/etc/sysctl.d/99-ollama-cpu.conf" \
+            "/etc/sysctl.d/99-ollama-amd-vulkan.conf" \
             "/etc/tmpfiles.d/ollama-thp.conf"; do
     if [[ -f "${f}" ]]; then
       sudo rm -f "${f}"
@@ -515,6 +595,7 @@ function setup_cpu_only() {
   sudo pacman -S --needed --noconfirm ollama
   ok "Ollama installiert."
 
+  local do_llm do_opencode_cpu
   read -rp "  llm-manager installieren? [j/N]: " do_llm
   read -rp "  opencode installieren?    [j/N]: " do_opencode_cpu
 
@@ -532,10 +613,8 @@ function setup_cpu_only() {
 
   # ── Physische CPU-Kerne ermitteln ────────────────────────────────────────
   local phys_cores log_cores
-  phys_cores=$(LANG=C lscpu | awk '/^Core\(s\) per socket:/{c=$NF} /^Socket\(s\):/{s=$NF} END{print c*s}')
+  phys_cores=$(get_phys_cores)
   log_cores=$(nproc)
-  # Fallback falls lscpu-Parsing fehlschlägt
-  [[ -z "${phys_cores}" || "${phys_cores}" == "0" ]] && phys_cores="${log_cores}"
   info "Erkannt: ${phys_cores} physische Kerne / ${log_cores} logische Kerne."
   warn "Tipp: Ollama nutzt physische Kerne für Inferenz — HyperThreading bringt wenig."
 
@@ -544,7 +623,7 @@ function setup_cpu_only() {
   local drop_file="${drop_dir}/cpu-optimized.conf"
   info "Erstelle systemd-Override: ${drop_file} …"
   sudo mkdir -p "${drop_dir}"
-  sudo tee "${drop_file}" > /dev/null << EOF
+  if ! sudo tee "${drop_file}" > /dev/null << EOF
 # Ollama CPU-only Optimierungen — generiert von ollama-setup.sh
 [Service]
 # Physische Kerne für Inferenz (kein HyperThreading-Overhead)
@@ -565,12 +644,15 @@ LimitNOFILE=65536
 CPUWeight=90
 IOWeight=80
 EOF
+  then
+    err "Fehler beim Schreiben von ${drop_file}"; return 1
+  fi
   ok "systemd-Override geschrieben."
 
   # ── sysctl-Tuning ────────────────────────────────────────────────────────
   local sysctl_file="/etc/sysctl.d/99-ollama-cpu.conf"
   info "Schreibe sysctl-Tuning: ${sysctl_file} …"
-  sudo tee "${sysctl_file}" > /dev/null << 'EOF'
+  if ! sudo tee "${sysctl_file}" > /dev/null << 'EOF'
 # Ollama CPU-Tuning — generiert von ollama-setup.sh
 
 # Weniger Swap-Auslagerung — Modelle im RAM halten
@@ -583,6 +665,9 @@ vm.dirty_background_ratio = 5
 # Weniger aggressives Leeren des Dentry/Inode-Cache
 vm.vfs_cache_pressure = 50
 EOF
+  then
+    err "Fehler beim Schreiben von ${sysctl_file}"; return 1
+  fi
   if sudo sysctl -p "${sysctl_file}" &>/dev/null; then
     ok "sysctl-Parameter aktiv."
   else
@@ -598,11 +683,15 @@ EOF
     warn "  Manuell: echo madvise > /sys/kernel/mm/transparent_hugepage/enabled"
   fi
   # Persistent via tmpfiles.d
-  sudo tee /etc/tmpfiles.d/ollama-thp.conf > /dev/null << 'EOF'
+  if ! sudo tee /etc/tmpfiles.d/ollama-thp.conf > /dev/null << 'EOF'
 # Transparent Hugepages für Ollama (große zusammenhängende Allokationen)
 w /sys/kernel/mm/transparent_hugepage/enabled - - - - madvise
 EOF
-  ok "Transparent Hugepages: madvise (persistent via tmpfiles.d)."
+  then
+    warn "tmpfiles.d-Eintrag konnte nicht geschrieben werden — THP nicht persistent."
+  else
+    ok "Transparent Hugepages: madvise (persistent via tmpfiles.d)."
+  fi
 
   # ── CPU-Governor ─────────────────────────────────────────────────────────
   if command -v cpupower &>/dev/null; then
@@ -627,11 +716,7 @@ EOF
   fi
 
   # ── Konfig-Ordner ────────────────────────────────────────────────────────
-  local config_dir="${HOME}/Ollama_config"
-  if [[ ! -d "${config_dir}" ]]; then
-    mkdir -p "${config_dir}"
-    ok "Konfigurationsordner erstellt: ${config_dir}"
-  fi
+  ensure_config_dir
 
   # ── Service (neu) laden ───────────────────────────────────────────────────
   info "systemd neu laden und ollama.service starten …"
@@ -655,7 +740,7 @@ EOF
 function modelfile_assistant() {
   require_ollama || return
   local config_dir="${HOME}/Ollama_config"
-  mkdir -p "${config_dir}"
+  ensure_config_dir
 
   local w
   w=$(dynamic_width)
@@ -670,7 +755,7 @@ function modelfile_assistant() {
   # ── Basismodell wählen ────────────────────────────────────────────────────
   local base_model
   local local_models
-  local_models=$(ollama list 2>/dev/null | awk 'NR>1 && $1!="" {print $1}' || true)
+  local_models=$(get_local_models)
 
   if [[ -n "${local_models}" ]]; then
     info "Basismodell aus installierten Modellen wählen oder manuell eingeben:"
@@ -694,6 +779,7 @@ function modelfile_assistant() {
   echo
   info "SYSTEM-Prompt definiert das Verhalten und die Rolle des Modells."
   warn "Tipp: Kurz und präzise halten. Leer lassen für Standard-Verhalten."
+  local sys_prompt
   read -rp "  SYSTEM-Prompt (Enter=leer): " sys_prompt
 
   # ── Temperature ───────────────────────────────────────────────────────────
@@ -751,6 +837,10 @@ function modelfile_assistant() {
   fi
   # Leerzeichen und Sonderzeichen entfernen
   model_name="${model_name//[^a-zA-Z0-9_-]/}"
+  if [[ -z "${model_name}" ]]; then
+    err "Modellname enthält keine gültigen Zeichen (erlaubt: a-z A-Z 0-9 _ -) — Abbruch."
+    return 1
+  fi
 
   # ── Dateiname ─────────────────────────────────────────────────────────────
   local filename="${config_dir}/Modelfile.${model_name}"
@@ -776,6 +866,7 @@ function modelfile_assistant() {
 
   # ── ollama create ─────────────────────────────────────────────────────────
   echo
+  local do_create
   read -rp "  Modell jetzt bauen? (ollama create ${model_name}) [j/N]: " do_create
   if [[ "${do_create,,}" == "j" ]]; then
     info "Baue Modell '${model_name}' …"
@@ -798,10 +889,7 @@ function install_opencode() {
 
   echo
   if [[ -z "${aur_helper}" ]]; then
-    err "Kein AUR-Helper gefunden (yay oder paru wird benötigt)."
-    warn "yay installieren:"
-    warn "  git clone https://aur.archlinux.org/yay.git"
-    warn "  cd yay && makepkg -si"
+    warn_no_aur
     return
   fi
 
@@ -818,6 +906,7 @@ function install_opencode() {
     warn "benötigt aber Ollama zur Laufzeit."
   fi
   echo
+  local confirm
   read -rp "  opencode jetzt installieren? [j/N]: " confirm
   [[ "${confirm,,}" != "j" ]] && { info "Abgebrochen."; return; }
 
@@ -825,6 +914,224 @@ function install_opencode() {
   ok "opencode installiert."
   warn "Tipp: opencode im Terminal starten mit: opencode"
   warn "      Ollama-Endpunkt wird automatisch auf http://localhost:11434 gesetzt."
+}
+
+# ── 7) AMD Ryzen + Vulkan Setup ───────────────────────────────────────────────
+function setup_amd_vulkan() {
+  local aur_helper
+  aur_helper=$(detect_aur_helper)
+
+  local w
+  w=$(dynamic_width)
+
+  # ── Hardware-Erkennung ───────────────────────────────────────────────────
+  local gpu_info apu_hint=""
+  gpu_info=$(lspci 2>/dev/null | grep -i 'vga\|3d\|display\|amdgpu' | grep -i 'amd\|radeon' || true)
+  # APU-Erkennung: Ryzen-iGPU hat keinen eigenen PCI-Bus-Slot wie dGPU
+  if echo "${gpu_info}" | grep -qi 'renoir\|cezanne\|rembrandt\|phoenix\|hawk\|picasso\|raven'; then
+    apu_hint="  APU erkannt (geteilter RAM als VRAM) — num_ctx und Modellgröße begrenzen!"
+  fi
+
+  # ── Optionen abfragen ────────────────────────────────────────────────────
+  echo
+  draw_line "${w}"
+  echo -e "${C_BOLD}  AMD Ryzen + Vulkan Setup${C_RESET}"
+  draw_line "${w}"
+  echo
+
+  if [[ -n "${gpu_info}" ]]; then
+    ok "AMD GPU erkannt: ${gpu_info}"
+  else
+    warn "Keine AMD GPU per lspci gefunden — Setup trotzdem möglich."
+    warn "Vulkan funktioniert auch ohne vorherige GPU-Erkennung."
+  fi
+  [[ -n "${apu_hint}" ]] && warn "${apu_hint}"
+  echo
+
+  local do_opencode_amd
+  read -rp "  opencode ebenfalls installieren? [j/N]: " do_opencode_amd
+
+  # ── Physische CPU-Kerne ermitteln ────────────────────────────────────────
+  local phys_cores log_cores
+  phys_cores=$(get_phys_cores)
+  log_cores=$(nproc)
+
+  # ── Summary aufbauen ─────────────────────────────────────────────────────
+  local aur_pkgs=("llm-manager")
+  [[ "${do_opencode_amd,,}" == "j" ]] && aur_pkgs+=("opencode")
+
+  local drop_dir="/etc/systemd/system/ollama.service.d"
+  local drop_file="${drop_dir}/amd-vulkan.conf"
+  local sysctl_file="/etc/sysctl.d/99-ollama-amd-vulkan.conf"
+  local thp_conf="/etc/tmpfiles.d/ollama-thp.conf"
+  local config_dir="${HOME}/Ollama_config"
+
+  echo
+  draw_line "${w}"
+  echo -e "${C_BOLD}  Installations-Übersicht${C_RESET}"
+  draw_line "${w}"
+  echo
+  echo -e "${C_BOLD}  Pakete (pacman):${C_RESET}"
+  echo -e "  ${C_GREEN}+${C_RESET} ollama"
+  echo -e "  ${C_GREEN}+${C_RESET} ollama-vulkan          (Vulkan-Backend)"
+  echo -e "  ${C_GREEN}+${C_RESET} vulkan-radeon          (Mesa RADV — AMD Vulkan-Treiber)"
+  echo -e "  ${C_GREEN}+${C_RESET} vulkan-icd-loader      (Vulkan ICD-Verwaltung)"
+  echo
+  echo -e "${C_BOLD}  AUR-Pakete ($( [[ -n "${aur_helper}" ]] && echo "${aur_helper}" || echo "kein Helper!") ):${C_RESET}"
+  for p in "${aur_pkgs[@]}"; do
+    echo -e "  ${C_GREEN}+${C_RESET} ${p}"
+  done
+  echo
+  echo -e "${C_BOLD}  Systemdateien:${C_RESET}"
+  echo -e "  ${C_GREEN}+${C_RESET} ${drop_file}"
+  echo -e "        OLLAMA_FLASH_ATTENTION=1, AMD_VULKAN_ICD=RADV"
+  echo -e "        RADV_PERFTEST=gpl, OLLAMA_NUM_PARALLEL=1"
+  echo -e "        OLLAMA_NUM_THREAD=${phys_cores}, LimitNOFILE=65536"
+  echo -e "  ${C_GREEN}+${C_RESET} ${sysctl_file}"
+  echo -e "        vm.swappiness=10, vm.dirty_ratio=20"
+  echo -e "  ${C_GREEN}+${C_RESET} ${thp_conf}"
+  echo -e "        Transparent Hugepages → madvise"
+  echo -e "  ${C_GREEN}+${C_RESET} ${config_dir}/  (Modelfile-Verzeichnis)"
+  echo
+  echo -e "${C_BOLD}  Dienste:${C_RESET}"
+  echo -e "  ${C_GREEN}+${C_RESET} ollama.service  enable + start"
+  echo
+  if [[ -z "${aur_helper}" ]]; then
+    warn "ACHTUNG: Kein AUR-Helper — AUR-Pakete werden übersprungen!"
+    warn "  yay installieren: git clone https://aur.archlinux.org/yay.git && cd yay && makepkg -si"
+  fi
+  warn "HINWEIS: vulkan-radeon/vulkan-icd-loader werden NICHT bei Deinstallation"
+  warn "         entfernt — sie werden ggf. vom Desktop-System benötigt."
+  echo
+  draw_line "${w}"
+  local confirm
+  read -rp "  Installation starten? [j/N]: " confirm
+  [[ "${confirm,,}" != "j" ]] && { info "Abgebrochen."; return; }
+
+  # ── Pakete installieren ───────────────────────────────────────────────────
+  echo
+  info "Installiere Basis-Pakete …"
+  sudo pacman -S --needed --noconfirm ollama ollama-vulkan vulkan-radeon vulkan-icd-loader
+  ok "Pakete installiert."
+
+  if [[ -n "${aur_helper}" ]]; then
+    info "Installiere AUR-Pakete: ${aur_pkgs[*]} …"
+    "${aur_helper}" -S --needed --noconfirm "${aur_pkgs[@]}"
+    ok "AUR-Pakete installiert: ${aur_pkgs[*]}"
+  else
+    warn "AUR-Pakete übersprungen (kein yay/paru)."
+  fi
+
+  # ── Vulkan-Treiber verifizieren ───────────────────────────────────────────
+  info "Vulkan-Geräteerkennung prüfen …"
+  if command -v vulkaninfo &>/dev/null; then
+    if vulkaninfo --summary 2>/dev/null | grep -qi 'radv\|amd'; then
+      ok "RADV/AMD Vulkan-Treiber wird erkannt."
+    else
+      warn "AMD-Gerät in vulkaninfo nicht gefunden — nach Neustart erneut prüfen."
+      warn "  Manuell: vulkaninfo --summary"
+    fi
+  else
+    warn "vulkaninfo nicht verfügbar — Erkennung übersprungen."
+    warn "  Installieren mit: sudo pacman -S vulkan-tools"
+  fi
+
+  # ── systemd-Override schreiben ────────────────────────────────────────────
+  info "Erstelle systemd-Override: ${drop_file} …"
+  sudo mkdir -p "${drop_dir}"
+  if ! sudo tee "${drop_file}" > /dev/null << EOF
+# Ollama AMD Ryzen + Vulkan Optimierungen — generiert von ollama-setup.sh
+[Service]
+# Mesa RADV erzwingen (besser als AMDVLK für Compute/Inferenz)
+Environment="AMD_VULKAN_ICD=RADV"
+# General Pipeline Libraries — schnellere Shader-Kompilierung
+Environment="RADV_PERFTEST=gpl"
+# Flash Attention reduziert VRAM-Verbrauch — wichtig für APUs mit geteiltem RAM
+Environment="OLLAMA_FLASH_ATTENTION=1"
+# Parallele Anfragen begrenzen (Ryzen-iGPU hat limitierten geteilten VRAM)
+Environment="OLLAMA_NUM_PARALLEL=1"
+# CPU-Threads für Host-Verarbeitung neben GPU-Inferenz
+Environment="OLLAMA_NUM_THREAD=${phys_cores}"
+# glibc-Arenen begrenzen
+Environment="MALLOC_ARENA_MAX=2"
+# Dateideskriptor-Limit für große Modelldateien
+LimitNOFILE=65536
+CPUWeight=80
+IOWeight=80
+EOF
+  then
+    err "Fehler beim Schreiben von ${drop_file}"; return 1
+  fi
+  ok "systemd-Override geschrieben."
+
+  # ── sysctl-Tuning ─────────────────────────────────────────────────────────
+  info "Schreibe sysctl-Tuning: ${sysctl_file} …"
+  if ! sudo tee "${sysctl_file}" > /dev/null << 'EOF'
+# Ollama AMD Ryzen Vulkan Tuning — generiert von ollama-setup.sh
+
+# Modelle im RAM halten (besonders wichtig bei APU mit geteiltem VRAM)
+vm.swappiness = 10
+
+# Dirty-Page-Tuning — reduziert I/O-Stalls beim Laden großer Modelle
+vm.dirty_ratio = 20
+vm.dirty_background_ratio = 5
+
+# Weniger aggressives Cache-Leeren
+vm.vfs_cache_pressure = 50
+EOF
+  then
+    err "Fehler beim Schreiben von ${sysctl_file}"; return 1
+  fi
+  if sudo sysctl -p "${sysctl_file}" &>/dev/null; then
+    ok "sysctl-Parameter aktiv."
+  else
+    warn "sysctl -p teilweise fehlgeschlagen — Parameter prüfen: ${sysctl_file}"
+  fi
+
+  # ── Transparent Hugepages ─────────────────────────────────────────────────
+  info "Transparent Hugepages auf 'madvise' setzen …"
+  if echo madvise | sudo tee /sys/kernel/mm/transparent_hugepage/enabled > /dev/null 2>&1; then
+    ok "Transparent Hugepages: madvise gesetzt."
+  else
+    warn "THP-Pfad nicht beschreibbar — nach Neustart erneut prüfen."
+  fi
+  if ! sudo tee "${thp_conf}" > /dev/null << 'EOF'
+# Transparent Hugepages für Ollama (persistent via tmpfiles.d)
+w /sys/kernel/mm/transparent_hugepage/enabled - - - - madvise
+EOF
+  then
+    warn "tmpfiles.d-Eintrag konnte nicht geschrieben werden — THP nicht persistent."
+  fi
+
+  # ── Konfig-Ordner ─────────────────────────────────────────────────────────
+  ensure_config_dir
+
+  # ── Service starten ───────────────────────────────────────────────────────
+  info "systemd neu laden und ollama.service starten …"
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now ollama
+  ok "ollama.service ist aktiv (AMD Vulkan-optimiert)."
+
+  # ── Abschluss-Summary ─────────────────────────────────────────────────────
+  echo
+  draw_line "${w}"
+  echo -e "${C_BOLD}  Abschluss-Übersicht${C_RESET}"
+  draw_line "${w}"
+  warn "  AMD_VULKAN_ICD    = RADV     (Mesa RADV erzwungen)"
+  warn "  RADV_PERFTEST     = gpl      (schnellere Pipeline-Kompilierung)"
+  warn "  FLASH_ATTENTION   = 1        (weniger VRAM-Verbrauch)"
+  warn "  OLLAMA_NUM_THREAD = ${phys_cores}        (physische CPU-Kerne)"
+  warn "  vm.swappiness     = 10       (Modelle im RAM halten)"
+  warn "  THP               = madvise  (bessere große Allokationen)"
+  echo
+  warn "Empfohlene Modelle:"
+  warn "  APU / wenig VRAM (<8 GB):  llama3.2:3b, qwen2.5:3b, phi3:mini"
+  warn "  dGPU (8–16 GB VRAM):       llama3.1:8b, mistral:7b, gemma2:9b"
+  warn "  dGPU (>16 GB VRAM):        llama3.1:70b (quantisiert), qwen2.5:32b"
+  echo
+  warn "Vulkan-Backend prüfen:   vulkaninfo --summary"
+  warn "Logs prüfen:             journalctl -u ollama -f"
+  warn "Override anpassen:       ${drop_file}"
 }
 
 # ── Hauptprogramm ─────────────────────────────────────────────────────────────
@@ -840,30 +1147,33 @@ function main() {
         install_ollama
         ;;
       2)
-        model_menu
-        continue   # model_menu bringt eigene Enter-Schleife mit
+        ensure_sudo
+        setup_amd_vulkan
         ;;
       3)
-        remove_menu
-        continue
-        ;;
-      4)
         ensure_sudo
         setup_cpu_only
+        ;;
+      4)
+        model_menu
+        continue
         ;;
       5)
         modelfile_assistant
         ;;
       6)
-        ensure_sudo
         install_opencode
+        ;;
+      7)
+        remove_menu
+        continue
         ;;
       q|Q)
         info "Auf Wiedersehen."
         exit 0
         ;;
       *)
-        warn "Ungültige Eingabe — bitte 1–6 oder q eingeben."
+        warn "Ungültige Eingabe — bitte 1–7 oder q eingeben."
         ;;
     esac
     echo
