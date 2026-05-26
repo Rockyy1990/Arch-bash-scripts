@@ -65,9 +65,9 @@ function detect_aur_helper() {
 
 function service_status() {
   if systemctl is-active --quiet ollama 2>/dev/null; then
-    printf "${C_GREEN}aktiv${C_RESET}"
+    printf '%s' "${C_GREEN}aktiv${C_RESET}"
   else
-    printf "${C_YELLOW}gestoppt${C_RESET}"
+    printf '%s' "${C_YELLOW}gestoppt${C_RESET}"
   fi
 }
 
@@ -79,9 +79,12 @@ function show_menu() {
   draw_line "${w}"
   echo -e "${C_BOLD}  Ollama Manager  //  Arch Linux${C_RESET}   [ollama: $(service_status)]"
   draw_line "${w}"
-  echo -e "  ${C_CYAN}1${C_RESET}  Ollama + Opencode + llm-manager installieren"
+  echo -e "  ${C_CYAN}1${C_RESET}  Ollama + llm-manager installieren (GPU)"
   echo -e "  ${C_CYAN}2${C_RESET}  KI-Modelle verwalten"
-  echo -e "  ${C_CYAN}3${C_RESET}  Ollama, Modelle & Opencode entfernen"
+  echo -e "  ${C_CYAN}3${C_RESET}  Deinstallation"
+  echo -e "  ${C_CYAN}4${C_RESET}  CPU-only Setup + Systemoptimierung"
+  echo -e "  ${C_CYAN}5${C_RESET}  Modelfile-Assistent"
+  echo -e "  ${C_CYAN}6${C_RESET}  Opencode nachinstallieren"
   echo -e "  ${C_CYAN}q${C_RESET}  Beenden"
   draw_line "${w}"
 }
@@ -109,19 +112,24 @@ function install_ollama() {
   sudo pacman -S --needed --noconfirm "${base_pkgs[@]}"
   ok "Ollama-Kern installiert."
 
-  # opencode & llm-manager sind AUR-Pakete
-  info "Installiere AUR-Pakete: opencode llm-manager …"
+  # opencode optional — llm-manager immer
+  info "Installiere AUR-Paket: llm-manager …"
+  read -rp "  opencode ebenfalls installieren? (KI-gestützter Code-Editor) [j/N]: " do_opencode
+  local aur_pkgs=("llm-manager")
+  [[ "${do_opencode,,}" == "j" ]] && aur_pkgs+=("opencode")
+
   if [[ -z "${aur_helper}" ]]; then
     err "Kein AUR-Helper gefunden (yay oder paru wird benötigt)."
     warn "yay zuerst installieren, dann Option 1 erneut ausführen:"
     warn "  git clone https://aur.archlinux.org/yay.git"
     warn "  cd yay && makepkg -si"
-    warn "opencode und llm-manager werden übersprungen."
+    warn "AUR-Pakete werden übersprungen."
   else
-    "${aur_helper}" -S --needed --noconfirm opencode llm-manager
-    ok "opencode & llm-manager installiert via ${aur_helper}."
-    warn "Hinweis: opencode benötigt eine aktive Ollama-Instanz als Backend."
-    warn "         llm-manager ermöglicht Modellverwaltung über eine Web-UI."
+    "${aur_helper}" -S --needed --noconfirm "${aur_pkgs[@]}"
+    ok "AUR-Pakete installiert: ${aur_pkgs[*]} via ${aur_helper}."
+    warn "Hinweis: llm-manager — Web-UI zur Modellverwaltung unter http://localhost:8080"
+    [[ "${do_opencode,,}" == "j" ]] && \
+      warn "Hinweis: opencode benötigt eine aktive Ollama-Instanz als Backend."
   fi
 
   info "ollama.service aktivieren und starten …"
@@ -242,8 +250,11 @@ function update_models() {
 
   info "Verwaiste Modell-Layer bereinigen …"
   # prune ist nicht in allen Ollama-Versionen verfügbar
-  ollama prune 2>/dev/null && ok "Bereinigung abgeschlossen." \
-    || warn "ollama prune nicht verfügbar — wird übersprungen."
+  if ollama prune 2>/dev/null; then
+    ok "Bereinigung abgeschlossen."
+  else
+    warn "ollama prune nicht verfügbar — wird übersprungen."
+  fi
 
   warn "Alle lokalen Modelle werden neu geladen (kann lange dauern) …"
   while IFS= read -r model; do
@@ -317,45 +328,503 @@ function model_menu() {
   done
 }
 
-# ── 3) Deinstallation ─────────────────────────────────────────────────────────
-function remove_all() {
-  echo
-  warn "Folgende Pakete werden entfernt: ollama, ollama-rocm, ollama-vulkan, opencode, llm-manager"
-  warn "Alle Modelldaten unter ~/.ollama werden DAUERHAFT gelöscht!"
-  warn "Der Ordner ~/Ollama_config (eigene Modelfiles) bleibt erhalten."
+# ── 3) Deinstallation (Untermenü) ────────────────────────────────────────────
+function _remove_models_only() {
+  warn "Alle Modelldaten unter ~/.ollama werden DAUERHAFT gelöscht."
+  warn "Eigene Modelfiles in ~/Ollama_config bleiben erhalten."
   read -rp "  Zur Bestätigung 'ja' eingeben: " confirm
   [[ "${confirm}" != "ja" ]] && { info "Abgebrochen."; return; }
 
-  info "ollama.service stoppen und deaktivieren …"
+  local restart=0
+  if systemctl is-active --quiet ollama 2>/dev/null; then
+    info "ollama.service kurz stoppen (Dateisperre vermeiden) …"
+    sudo systemctl stop ollama
+    restart=1
+  fi
+
+  rm -rf "${HOME}/.ollama"
+  ok "Modelldaten unter ~/.ollama gelöscht."
+
+  if (( restart == 1 )); then
+    sudo systemctl start ollama
+    ok "ollama.service wieder gestartet."
+  fi
+  warn "Tipp: Neue Modelle herunterladen über Option 2 → Modell herunterladen."
+}
+
+function _remove_packages_only() {
+  local aur_helper
+  aur_helper=$(detect_aur_helper)
+
+  info "Installierte Ollama-Pakete ermitteln …"
+  local pkgs=()
+  for p in ollama ollama-rocm ollama-vulkan opencode llm-manager; do
+    if pacman -Q "${p}" &>/dev/null; then pkgs+=("${p}"); fi
+  done
+
+  if (( ${#pkgs[@]} == 0 )); then
+    warn "Keine passenden Pakete gefunden."
+    return
+  fi
+
+  warn "Werden entfernt: ${pkgs[*]}"
+  warn "Modelldaten (~/.ollama) und Configs bleiben erhalten."
+  read -rp "  Bestätigen mit 'ja': " confirm
+  [[ "${confirm}" != "ja" ]] && { info "Abgebrochen."; return; }
+
+  _do_remove_packages "${pkgs[@]}"
+
+  if [[ -n "${aur_helper}" ]]; then
+    warn "AUR-Reste prüfen: ${aur_helper} -Rns opencode llm-manager"
+  fi
+}
+
+# Interne Hilfsfunktion — entfernt Pakete ohne eigene Bestätigungsabfrage
+function _do_remove_packages() {
+  local pkgs=("$@")
+  info "ollama.service stoppen …"
   sudo systemctl disable --now ollama 2>/dev/null || true
+  sudo pacman -Rns --noconfirm "${pkgs[@]}"
+  ok "Pakete entfernt: ${pkgs[*]}"
+}
+
+function _remove_configs_only() {
+  local config_dir="${HOME}/Ollama_config"
+  local drop_file="/etc/systemd/system/ollama.service.d/cpu-optimized.conf"
+  local sysctl_file="/etc/sysctl.d/99-ollama-cpu.conf"
+  local thp_file="/etc/tmpfiles.d/ollama-thp.conf"
+
+  echo
+  info "Folgende Einträge werden entfernt (falls vorhanden):"
+  echo -e "  ${C_YELLOW}  ${config_dir}${C_RESET}   (eigene Modelfiles)"
+  echo -e "  ${C_YELLOW}  ${drop_file}${C_RESET}"
+  echo -e "  ${C_YELLOW}  ${sysctl_file}${C_RESET}"
+  echo -e "  ${C_YELLOW}  ${thp_file}${C_RESET}"
+  echo
+  warn "Achtung: Eigene Modelfiles in ${config_dir} gehen verloren!"
+  read -rp "  Bestätigen mit 'ja': " confirm
+  [[ "${confirm}" != "ja" ]] && { info "Abgebrochen."; return; }
+
+  if [[ -d "${config_dir}" ]]; then
+    rm -rf "${config_dir}"
+    ok "${config_dir} gelöscht."
+  else
+    info "${config_dir} nicht vorhanden — übersprungen."
+  fi
+
+  local removed_sysctl=0
+  for f in "${drop_file}" "${sysctl_file}" "${thp_file}"; do
+    if [[ -f "${f}" ]]; then
+      sudo rm -f "${f}"
+      ok "${f} gelöscht."
+      removed_sysctl=1
+    else
+      info "${f} nicht vorhanden — übersprungen."
+    fi
+  done
+
+  if (( removed_sysctl == 1 )); then
+    sudo systemctl daemon-reload
+    sudo sysctl --system &>/dev/null
+    ok "systemd und sysctl neu geladen."
+  fi
+}
+
+function _remove_all_confirm() {
+  echo
+  warn "VOLLSTÄNDIGE Deinstallation:"
+  warn "  - Pakete:    ollama, ollama-rocm, ollama-vulkan, opencode, llm-manager"
+  warn "  - Modelle:   ~/.ollama  (DAUERHAFT)"
+  warn "  - Configs:   ~/Ollama_config, systemd-Override, sysctl, tmpfiles"
+  echo
+  read -rp "  Zur Bestätigung 'ja' eingeben: " confirm
+  [[ "${confirm}" != "ja" ]] && { info "Abgebrochen."; return; }
 
   info "Installierte Pakete ermitteln …"
   local pkgs=()
   for p in ollama ollama-rocm ollama-vulkan opencode llm-manager; do
-    pacman -Q "${p}" &>/dev/null && pkgs+=("${p}") || true
+    if pacman -Q "${p}" &>/dev/null; then pkgs+=("${p}"); fi
   done
-
   if (( ${#pkgs[@]} > 0 )); then
-    sudo pacman -Rns --noconfirm "${pkgs[@]}"
-    ok "Entfernt: ${pkgs[*]}"
+    _do_remove_packages "${pkgs[@]}"
   else
-    warn "Keine passenden pacman-Pakete gefunden."
+    warn "Keine passenden Pakete gefunden."
   fi
-
-  # AUR-Pakete ggf. separat entfernen
-  local aur_helper
-  aur_helper=$(detect_aur_helper)
-  if [[ -n "${aur_helper}" ]]; then
-    warn "AUR-Pakete ggf. noch vorhanden — manuell prüfen:"
-    warn "  ${aur_helper} -Rns opencode llm-manager"
-  fi
-
-  info "Modelldaten unter ~/.ollama löschen …"
+  echo
   rm -rf "${HOME}/.ollama"
   ok "Modelldaten gelöscht."
+  echo
+  # Config-Dateien direkt ohne erneute Abfrage entfernen
+  for f in "/etc/systemd/system/ollama.service.d/cpu-optimized.conf" \
+            "/etc/sysctl.d/99-ollama-cpu.conf" \
+            "/etc/tmpfiles.d/ollama-thp.conf"; do
+    if [[ -f "${f}" ]]; then
+      sudo rm -f "${f}"
+      ok "${f} gelöscht."
+    fi
+  done
+  if [[ -d "${HOME}/Ollama_config" ]]; then
+    rm -rf "${HOME}/Ollama_config"
+    ok "${HOME}/Ollama_config gelöscht."
+  fi
+  sudo systemctl daemon-reload 2>/dev/null || true
+  ok "Deinstallation abgeschlossen."
+}
 
-  warn "Hinweis: ~/Ollama_config (eigene Modelfiles) wurde NICHT gelöscht."
-  warn "         Manuell entfernen mit: rm -rf ~/Ollama_config"
+function remove_menu() {
+  local w sub
+  while true; do
+    w=$(dynamic_width)
+    echo
+    draw_line "${w}"
+    echo -e "${C_BOLD}  Deinstallation${C_RESET}"
+    draw_line "${w}"
+    echo -e "  ${C_CYAN}1${C_RESET}  Nur Modelle entfernen     (~/.ollama)"
+    echo -e "  ${C_CYAN}2${C_RESET}  Nur Pakete deinstallieren (ollama, opencode …)"
+    echo -e "  ${C_CYAN}3${C_RESET}  Nur Configs entfernen     (Modelfiles, systemd, sysctl)"
+    echo -e "  ${C_CYAN}4${C_RESET}  Alles entfernen"
+    echo -e "  ${C_CYAN}z${C_RESET}  Zurück"
+    draw_line "${w}"
+    read -rp "  Auswahl: " sub
+    case "${sub}" in
+      1) ensure_sudo; _remove_models_only ;;
+      2) ensure_sudo; _remove_packages_only ;;
+      3) ensure_sudo; _remove_configs_only ;;
+      4) ensure_sudo; _remove_all_confirm ;;
+      z|Z) return ;;
+      *) warn "Ungültige Eingabe." ;;
+    esac
+    echo
+    read -rp "  Weiter mit Enter …" _
+  done
+}
+
+# ── 4) CPU-only Setup + Systemoptimierung ────────────────────────────────────
+function setup_cpu_only() {
+  local aur_helper
+  aur_helper=$(detect_aur_helper)
+
+  echo
+  warn "CPU-only Modus: Kein GPU-Backend — Ollama läuft ausschließlich auf der CPU."
+  warn "Empfohlen für Systeme ohne dedizierte GPU oder bei ROCm/Vulkan-Problemen."
+  warn "Modelle laufen langsamer als mit GPU — kleine Modelle (≤7B) sind realistisch."
+  echo
+
+  # ── Ollama ohne GPU-Backend installieren ────────────────────────────────
+  info "Installiere ollama (CPU-only, kein rocm/vulkan) …"
+  sudo pacman -S --needed --noconfirm ollama
+  ok "Ollama installiert."
+
+  read -rp "  llm-manager installieren? [j/N]: " do_llm
+  read -rp "  opencode installieren?    [j/N]: " do_opencode_cpu
+
+  if [[ -n "${aur_helper}" ]]; then
+    local aur_pkgs=()
+    [[ "${do_llm,,}"        == "j" ]] && aur_pkgs+=("llm-manager")
+    [[ "${do_opencode_cpu,,}" == "j" ]] && aur_pkgs+=("opencode")
+    if (( ${#aur_pkgs[@]} > 0 )); then
+      "${aur_helper}" -S --needed --noconfirm "${aur_pkgs[@]}"
+      ok "AUR-Pakete installiert: ${aur_pkgs[*]}"
+    fi
+  else
+    warn "Kein AUR-Helper — llm-manager/opencode werden übersprungen."
+  fi
+
+  # ── Physische CPU-Kerne ermitteln ────────────────────────────────────────
+  local phys_cores log_cores
+  phys_cores=$(LANG=C lscpu | awk '/^Core\(s\) per socket:/{c=$NF} /^Socket\(s\):/{s=$NF} END{print c*s}')
+  log_cores=$(nproc)
+  # Fallback falls lscpu-Parsing fehlschlägt
+  [[ -z "${phys_cores}" || "${phys_cores}" == "0" ]] && phys_cores="${log_cores}"
+  info "Erkannt: ${phys_cores} physische Kerne / ${log_cores} logische Kerne."
+  warn "Tipp: Ollama nutzt physische Kerne für Inferenz — HyperThreading bringt wenig."
+
+  # ── systemd Service-Override ─────────────────────────────────────────────
+  local drop_dir="/etc/systemd/system/ollama.service.d"
+  local drop_file="${drop_dir}/cpu-optimized.conf"
+  info "Erstelle systemd-Override: ${drop_file} …"
+  sudo mkdir -p "${drop_dir}"
+  sudo tee "${drop_file}" > /dev/null << EOF
+# Ollama CPU-only Optimierungen — generiert von ollama-setup.sh
+[Service]
+# Physische Kerne für Inferenz (kein HyperThreading-Overhead)
+Environment="OLLAMA_NUM_THREAD=${phys_cores}"
+# Flash Attention reduziert Speicherverbrauch deutlich
+Environment="OLLAMA_FLASH_ATTENTION=1"
+# Parallele Anfragen begrenzen (CPU hat keine dedizierte VRAM-Trennung)
+Environment="OLLAMA_NUM_PARALLEL=1"
+# glibc-Speicherarenen begrenzen — weniger Fragmentierung bei großen Modellen
+Environment="MALLOC_ARENA_MAX=2"
+# OpenMP-Threads auf physische Kerne setzen
+Environment="OMP_NUM_THREADS=${phys_cores}"
+# Offloading explizit deaktivieren
+Environment="OLLAMA_INTEL_GPU=0"
+# Erhöhtes Dateideskriptor-Limit für große Modelldateien
+LimitNOFILE=65536
+# Hohe CPU-Priorität für den Ollama-Prozess
+CPUWeight=90
+IOWeight=80
+EOF
+  ok "systemd-Override geschrieben."
+
+  # ── sysctl-Tuning ────────────────────────────────────────────────────────
+  local sysctl_file="/etc/sysctl.d/99-ollama-cpu.conf"
+  info "Schreibe sysctl-Tuning: ${sysctl_file} …"
+  sudo tee "${sysctl_file}" > /dev/null << 'EOF'
+# Ollama CPU-Tuning — generiert von ollama-setup.sh
+
+# Weniger Swap-Auslagerung — Modelle im RAM halten
+vm.swappiness = 10
+
+# Mehr Zeit für Dirty Pages — reduziert I/O-Stalls beim Laden großer Modelle
+vm.dirty_ratio = 20
+vm.dirty_background_ratio = 5
+
+# Weniger aggressives Leeren des Dentry/Inode-Cache
+vm.vfs_cache_pressure = 50
+EOF
+  if sudo sysctl -p "${sysctl_file}" &>/dev/null; then
+    ok "sysctl-Parameter aktiv."
+  else
+    warn "sysctl -p teilweise fehlgeschlagen — Parameter manuell prüfen: ${sysctl_file}"
+  fi
+
+  # ── Transparent Hugepages ────────────────────────────────────────────────
+  info "Transparent Hugepages auf 'madvise' setzen …"
+  if echo madvise | sudo tee /sys/kernel/mm/transparent_hugepage/enabled > /dev/null 2>&1; then
+    ok "Transparent Hugepages: madvise gesetzt."
+  else
+    warn "THP-Pfad nicht beschreibbar — Kernel-Unterstützung prüfen."
+    warn "  Manuell: echo madvise > /sys/kernel/mm/transparent_hugepage/enabled"
+  fi
+  # Persistent via tmpfiles.d
+  sudo tee /etc/tmpfiles.d/ollama-thp.conf > /dev/null << 'EOF'
+# Transparent Hugepages für Ollama (große zusammenhängende Allokationen)
+w /sys/kernel/mm/transparent_hugepage/enabled - - - - madvise
+EOF
+  ok "Transparent Hugepages: madvise (persistent via tmpfiles.d)."
+
+  # ── CPU-Governor ─────────────────────────────────────────────────────────
+  if command -v cpupower &>/dev/null; then
+    info "CPU-Governor auf 'performance' setzen …"
+    if sudo cpupower frequency-set -g performance &>/dev/null; then
+      ok "CPU-Governor: performance."
+    else
+      warn "CPU-Governor konnte nicht gesetzt werden (Kernel-Modul fehlt?)."
+    fi
+    # cpupower.service für Persistenz aktivieren
+    if systemctl list-unit-files cpupower.service &>/dev/null; then
+      if sudo systemctl enable --now cpupower.service 2>/dev/null; then
+        ok "cpupower.service aktiviert (bleibt nach Neustart aktiv)."
+      else
+        warn "cpupower.service konnte nicht aktiviert werden."
+      fi
+    fi
+  else
+    warn "cpupower nicht gefunden — Governor bleibt unverändert."
+    warn "  Installieren mit: sudo pacman -S cpupower"
+    warn "  Danach manuell:   sudo cpupower frequency-set -g performance"
+  fi
+
+  # ── Konfig-Ordner ────────────────────────────────────────────────────────
+  local config_dir="${HOME}/Ollama_config"
+  if [[ ! -d "${config_dir}" ]]; then
+    mkdir -p "${config_dir}"
+    ok "Konfigurationsordner erstellt: ${config_dir}"
+  fi
+
+  # ── Service (neu) laden ───────────────────────────────────────────────────
+  info "systemd neu laden und ollama.service starten …"
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now ollama
+  ok "ollama.service ist aktiv (CPU-optimiert)."
+
+  echo
+  warn "Zusammenfassung der Optimierungen:"
+  warn "  OLLAMA_NUM_THREAD = ${phys_cores}  (physische Kerne)"
+  warn "  FLASH_ATTENTION   = 1              (weniger RAM-Verbrauch)"
+  warn "  vm.swappiness     = 10             (Modelle im RAM halten)"
+  warn "  THP               = madvise        (bessere große Allokationen)"
+  warn "  LimitNOFILE       = 65536          (große Modelldateien)"
+  warn "Empfohlene Modelle für CPU: llama3.2:3b, qwen2.5:3b, phi3:mini, gemma2:2b"
+  warn "Override-Datei anpassen:   ${drop_file}"
+  warn "Logs prüfen mit:           journalctl -u ollama -f"
+}
+
+# ── 5) Modelfile-Assistent ────────────────────────────────────────────────────
+function modelfile_assistant() {
+  require_ollama || return
+  local config_dir="${HOME}/Ollama_config"
+  mkdir -p "${config_dir}"
+
+  local w
+  w=$(dynamic_width)
+  echo
+  draw_line "${w}"
+  echo -e "${C_BOLD}  Modelfile-Assistent${C_RESET}"
+  draw_line "${w}"
+  warn "Erstellt eine Modelfile-Konfiguration in ${config_dir}/"
+  warn "und baut daraus optional ein eigenes Ollama-Modell."
+  echo
+
+  # ── Basismodell wählen ────────────────────────────────────────────────────
+  local base_model
+  local local_models
+  local_models=$(ollama list 2>/dev/null | awk 'NR>1 && $1!="" {print $1}' || true)
+
+  if [[ -n "${local_models}" ]]; then
+    info "Basismodell aus installierten Modellen wählen oder manuell eingeben:"
+    base_model=$(echo "${local_models}" \
+      | fzf --prompt="  Basismodell > " \
+            --header="Enter=auswählen  Esc=manuell eingeben" \
+            --color="hl:cyan,hl+:cyan" \
+      || true)
+  fi
+
+  if [[ -z "${base_model}" ]]; then
+    read -rp "  Basismodell manuell eingeben (z.B. llama3.2:3b): " base_model
+  fi
+
+  if [[ -z "${base_model}" ]]; then
+    err "Kein Basismodell angegeben — Abbruch."
+    return
+  fi
+
+  # ── SYSTEM-Prompt ─────────────────────────────────────────────────────────
+  echo
+  info "SYSTEM-Prompt definiert das Verhalten und die Rolle des Modells."
+  warn "Tipp: Kurz und präzise halten. Leer lassen für Standard-Verhalten."
+  read -rp "  SYSTEM-Prompt (Enter=leer): " sys_prompt
+
+  # ── Temperature ───────────────────────────────────────────────────────────
+  echo
+  info "Temperature steuert Kreativität vs. Präzision:"
+  info "  0.0 = deterministisch/präzise   1.0 = kreativ/variabel   (Standard: 0.7)"
+  local temperature
+  while true; do
+    read -rp "  Temperature [0.0-1.0, Enter=0.7]: " temperature
+    temperature="${temperature:-0.7}"
+    # Prüfen ob gültige Zahl zwischen 0 und 1
+    if [[ "${temperature}" =~ ^0(\.[0-9]+)?$|^1(\.0+)?$ ]]; then
+      break
+    else
+      warn "Ungültiger Wert — bitte eine Zahl zwischen 0.0 und 1.0 eingeben."
+    fi
+  done
+
+  # ── Kontextgröße ──────────────────────────────────────────────────────────
+  echo
+  info "num_ctx = Kontextfenster (Token). Größer = mehr RAM-Verbrauch."
+  info "  Empfehlung: 2048 für schwache Hardware, 4096 Standard, 8192+ für lange Gespräche."
+  warn "Tipp: Größere Modelle (>7B) verkraften kaum num_ctx > 4096 auf CPU."
+  local num_ctx
+  local PS3="  Auswahl: "
+  select ctx_choice in "2048" "4096" "8192" "16384" "32768" "Manuell eingeben"; do
+    case "${ctx_choice}" in
+      "Manuell eingeben")
+        read -rp "  num_ctx eingeben: " num_ctx
+        [[ "${num_ctx}" =~ ^[0-9]+$ ]] || { warn "Ungültig — setze 4096."; num_ctx=4096; }
+        break ;;
+      "")
+        warn "Ungültige Auswahl." ;;
+      *)
+        num_ctx="${ctx_choice}"
+        break ;;
+    esac
+  done
+
+  # ── Optionaler repeat_penalty ─────────────────────────────────────────────
+  echo
+  info "repeat_penalty verhindert Wiederholungen im Text."
+  info "  1.0 = deaktiviert   1.1 = Standard   1.3 = stark"
+  local repeat_penalty
+  read -rp "  repeat_penalty [Enter=1.1]: " repeat_penalty
+  repeat_penalty="${repeat_penalty:-1.1}"
+
+  # ── Name des eigenen Modells ──────────────────────────────────────────────
+  echo
+  local model_name
+  read -rp "  Name für das eigene Modell (z.B. mein-assistent): " model_name
+  if [[ -z "${model_name}" ]]; then
+    err "Kein Modellname angegeben — Abbruch."
+    return
+  fi
+  # Leerzeichen und Sonderzeichen entfernen
+  model_name="${model_name//[^a-zA-Z0-9_-]/}"
+
+  # ── Dateiname ─────────────────────────────────────────────────────────────
+  local filename="${config_dir}/Modelfile.${model_name}"
+
+  # ── Modelfile schreiben ───────────────────────────────────────────────────
+  {
+    echo "FROM ${base_model}"
+    echo ""
+    if [[ -n "${sys_prompt}" ]]; then
+      echo "SYSTEM \"${sys_prompt}\""
+      echo ""
+    fi
+    echo "PARAMETER temperature ${temperature}"
+    echo "PARAMETER num_ctx ${num_ctx}"
+    echo "PARAMETER repeat_penalty ${repeat_penalty}"
+  } > "${filename}"
+
+  ok "Modelfile geschrieben: ${filename}"
+  echo
+  echo -e "${C_BOLD}── Inhalt ──${C_RESET}"
+  cat "${filename}"
+  echo -e "${C_BOLD}────────────${C_RESET}"
+
+  # ── ollama create ─────────────────────────────────────────────────────────
+  echo
+  read -rp "  Modell jetzt bauen? (ollama create ${model_name}) [j/N]: " do_create
+  if [[ "${do_create,,}" == "j" ]]; then
+    info "Baue Modell '${model_name}' …"
+    if ollama create "${model_name}" -f "${filename}"; then
+      ok "Modell '${model_name}' erfolgreich erstellt."
+      warn "Starten mit: ollama run ${model_name}"
+    else
+      err "ollama create fehlgeschlagen — Modelfile prüfen: ${filename}"
+    fi
+  else
+    warn "Manuell bauen mit:"
+    warn "  ollama create ${model_name} -f ${filename}"
+  fi
+}
+
+# ── 6) Opencode nachinstallieren ──────────────────────────────────────────────
+function install_opencode() {
+  local aur_helper
+  aur_helper=$(detect_aur_helper)
+
+  echo
+  if [[ -z "${aur_helper}" ]]; then
+    err "Kein AUR-Helper gefunden (yay oder paru wird benötigt)."
+    warn "yay installieren:"
+    warn "  git clone https://aur.archlinux.org/yay.git"
+    warn "  cd yay && makepkg -si"
+    return
+  fi
+
+  if pacman -Q opencode &>/dev/null; then
+    ok "opencode ist bereits installiert."
+    warn "Aktualisieren mit: ${aur_helper} -Su opencode"
+    return
+  fi
+
+  warn "opencode ist ein KI-gestützter Code-Editor mit Ollama-Backend."
+  warn "Voraussetzung: Ollama muss installiert und aktiv sein (Option 1 oder 4)."
+  if ! command -v ollama &>/dev/null; then
+    warn "Ollama nicht gefunden — opencode wird trotzdem installiert,"
+    warn "benötigt aber Ollama zur Laufzeit."
+  fi
+  echo
+  read -rp "  opencode jetzt installieren? [j/N]: " confirm
+  [[ "${confirm,,}" != "j" ]] && { info "Abgebrochen."; return; }
+
+  "${aur_helper}" -S --needed --noconfirm opencode
+  ok "opencode installiert."
+  warn "Tipp: opencode im Terminal starten mit: opencode"
+  warn "      Ollama-Endpunkt wird automatisch auf http://localhost:11434 gesetzt."
 }
 
 # ── Hauptprogramm ─────────────────────────────────────────────────────────────
@@ -375,15 +844,26 @@ function main() {
         continue   # model_menu bringt eigene Enter-Schleife mit
         ;;
       3)
+        remove_menu
+        continue
+        ;;
+      4)
         ensure_sudo
-        remove_all
+        setup_cpu_only
+        ;;
+      5)
+        modelfile_assistant
+        ;;
+      6)
+        ensure_sudo
+        install_opencode
         ;;
       q|Q)
         info "Auf Wiedersehen."
         exit 0
         ;;
       *)
-        warn "Ungültige Eingabe — bitte 1, 2, 3 oder q eingeben."
+        warn "Ungültige Eingabe — bitte 1–6 oder q eingeben."
         ;;
     esac
     echo
