@@ -195,6 +195,33 @@ run_with_sudo() {
     fi
 }
 
+# Maps generic tool names to distro-specific package names
+_map_pkg_apt() {
+    case "$1" in
+        file)       echo "file" ;;
+        winetricks) echo "winetricks" ;;
+        zstd)       echo "zstd" ;;
+        jq)         echo "jq" ;;
+        tar)        echo "tar" ;;
+        unzip)      echo "unzip" ;;
+        curl)       echo "curl" ;;
+        *)          echo "$1" ;;
+    esac
+}
+
+_map_pkg_pacman() {
+    case "$1" in
+        file)       echo "file" ;;
+        winetricks) echo "winetricks" ;;
+        zstd)       echo "zstd" ;;
+        jq)         echo "jq" ;;
+        tar)        echo "tar" ;;
+        unzip)      echo "unzip" ;;
+        curl)       echo "curl" ;;
+        *)          echo "$1" ;;
+    esac
+}
+
 install_missing_deps() {
     local missing=("$@")
     local os_info
@@ -204,43 +231,46 @@ install_missing_deps() {
 
     log_warn "Automatische Installation wird vorbereitet für: ${missing[*]}"
 
-    local install_cmd=()
+    local use_apt=false
     if [[ "${os_id}" =~ ^(debian|ubuntu|pop|mint|kali)$ ]] || [[ "${os_like}" =~ debian ]]; then
-        if ! confirm_action "Möchtest du die fehlenden Abhängigkeiten (${missing[*]}) via apt installieren?"; then
+        use_apt=true
+    elif [[ "${os_id}" =~ ^(arch|manjaro|endeavouros|cachyos)$ ]] || [[ "${os_like}" =~ arch ]]; then
+        use_apt=false
+    elif command -v apt-get &>/dev/null; then
+        use_apt=true
+    elif command -v pacman &>/dev/null; then
+        use_apt=false
+    else
+        log_error "Nicht unterstützte Distribution. Bitte installiere manuell: ${missing[*]}"
+        return 1
+    fi
+
+    local mapped=()
+    for pkg in "${missing[@]}"; do
+        if [[ "${use_apt}" == "true" ]]; then
+            mapped+=("$(_map_pkg_apt "${pkg}")")
+        else
+            mapped+=("$(_map_pkg_pacman "${pkg}")")
+        fi
+    done
+
+    if [[ "${use_apt}" == "true" ]]; then
+        if ! confirm_action "Möchtest du die fehlenden Abhängigkeiten (${mapped[*]}) via apt installieren?"; then
             return 1
         fi
         log_info "Aktualisiere Paketquellen..."
         run_with_sudo apt-get update -y
-        install_cmd=(apt-get install -y)
-    elif [[ "${os_id}" =~ ^(arch|manjaro|endeavouros)$ ]] || [[ "${os_like}" =~ arch ]]; then
-        if ! confirm_action "Möchtest du die fehlenden Abhängigkeiten (${missing[*]}) via pacman installieren?"; then
-            return 1
-        fi
-        install_cmd=(pacman -S --noconfirm)
+        run_with_sudo apt-get install -y "${mapped[@]}"
     else
-        if command -v apt-get &>/dev/null; then
-            if ! confirm_action "Möchtest du die fehlenden Abhängigkeiten (${missing[*]}) via apt installieren?"; then
-                return 1
-            fi
-            log_info "Aktualisiere Paketquellen..."
-            run_with_sudo apt-get update -y
-            install_cmd=(apt-get install -y)
-        elif command -v pacman &>/dev/null; then
-            if ! confirm_action "Möchtest du die fehlenden Abhängigkeiten (${missing[*]}) via pacman installieren?"; then
-                return 1
-            fi
-            install_cmd=(pacman -S --noconfirm)
-        else
-            log_error "Nicht unterstützte Distribution zur automatischen Installation. Bitte installiere manuell: ${missing[*]}"
+        if ! confirm_action "Möchtest du die fehlenden Abhängigkeiten (${mapped[*]}) via pacman installieren?"; then
             return 1
         fi
+        run_with_sudo pacman -S --noconfirm "${mapped[@]}"
     fi
-
-    run_with_sudo "${install_cmd[@]}" "${missing[@]}"
 }
 
 validate_dependencies() {
-    # zstd hinzugefügt zur fehlerfreien Dekomprimierung von CachyOS Archiven
+    # Core tools required for script operation (zstd for CachyOS .tar.zst archives)
     local deps=(jq tar unzip winetricks curl file zstd)
     local missing=()
     for cmd in "${deps[@]}"; do
@@ -265,6 +295,40 @@ validate_dependencies() {
         if (( ${#verify_failed[@]} > 0 )); then
             log_error "Einige Abhängigkeiten fehlen weiterhin nach der Installation: ${verify_failed[*]}"
             exit 1
+        fi
+    fi
+
+    _validate_wine_runtime
+}
+
+# Checks distro-specific Wine runtime libraries (Vulkan, libvulkan) without hard-failing
+_validate_wine_runtime() {
+    local os_info
+    os_info=$(detect_os)
+    local os_id="${os_info%%:*}"
+    local os_like="${os_info#*:}"
+
+    if [[ "${os_id}" =~ ^(debian|ubuntu|pop|mint|kali)$ ]] || [[ "${os_like}" =~ debian ]]; then
+        local needed=()
+        for pkg in libvulkan1 libvulkan1:i386 wine64 wine32; do
+            if ! dpkg -l "${pkg}" 2>/dev/null | grep -q "^ii"; then
+                needed+=("${pkg}")
+            fi
+        done
+        if (( ${#needed[@]} > 0 )); then
+            log_warn "Empfohlene Wine-Laufzeitpakete fehlen: ${needed[*]}"
+            log_warn "Installiere mit: sudo apt-get install ${needed[*]}"
+        fi
+    elif [[ "${os_id}" =~ ^(arch|manjaro|endeavouros|cachyos)$ ]] || [[ "${os_like}" =~ arch ]]; then
+        local needed=()
+        for pkg in vulkan-icd-loader lib32-vulkan-icd-loader; do
+            if ! pacman -Qi "${pkg}" &>/dev/null; then
+                needed+=("${pkg}")
+            fi
+        done
+        if (( ${#needed[@]} > 0 )); then
+            log_warn "Empfohlene Wine-Laufzeitpakete fehlen: ${needed[*]}"
+            log_warn "Installiere mit: sudo pacman -S ${needed[*]}"
         fi
     fi
 }
@@ -328,22 +392,34 @@ verify_multilib_support() {
                 run_with_sudo apt-get update -y
             fi
         fi
-        if ! dpkg -l | grep -q -E "libc6:i386"; then
-            log_warn "Grundlegende 32-Bit-Bibliotheken (libc6:i386) fehlen."
-            if confirm_action "Möchtest du libc6:i386 und libgl1:i386 installieren?"; then
-                run_with_sudo apt-get install -y libc6:i386 libgl1:i386
+        local deb_missing=()
+        for pkg in libc6:i386 libgl1:i386 libvulkan1:i386; do
+            if ! dpkg -l "${pkg}" 2>/dev/null | grep -q "^ii"; then
+                deb_missing+=("${pkg}")
+            fi
+        done
+        if (( ${#deb_missing[@]} > 0 )); then
+            log_warn "Fehlende 32-Bit-Laufzeitbibliotheken: ${deb_missing[*]}"
+            if confirm_action "Möchtest du ${deb_missing[*]} installieren?"; then
+                run_with_sudo apt-get install -y "${deb_missing[@]}"
             fi
         fi
-    elif [[ "${os_id}" =~ ^(arch|manjaro|endeavouros)$ ]] || [[ "${os_like}" =~ arch ]]; then
+    elif [[ "${os_id}" =~ ^(arch|manjaro|endeavouros|cachyos)$ ]] || [[ "${os_like}" =~ arch ]]; then
         if ! grep -E -q '^\[multilib\]' /etc/pacman.conf; then
             log_warn "[multilib] Repository ist in /etc/pacman.conf nicht aktiv!"
-            log_warn "Bitte aktiviere [multilib] manuell und installiere 'lib32-glibc'."
-        else
-            if ! pacman -Qi lib32-glibc &>/dev/null; then
-                log_warn "lib32-glibc ist nicht installiert."
-                if confirm_action "Möchtest du lib32-glibc jetzt installieren?"; then
-                    run_with_sudo pacman -S --noconfirm lib32-glibc
-                fi
+            log_warn "Bitte aktiviere [multilib] manuell für 32-Bit-Wine-Unterstützung."
+            return 0
+        fi
+        local arch_missing=()
+        for pkg in lib32-glibc lib32-vulkan-icd-loader lib32-mesa; do
+            if ! pacman -Qi "${pkg}" &>/dev/null; then
+                arch_missing+=("${pkg}")
+            fi
+        done
+        if (( ${#arch_missing[@]} > 0 )); then
+            log_warn "Fehlende 32-Bit-Pakete: ${arch_missing[*]}"
+            if confirm_action "Möchtest du ${arch_missing[*]} installieren?"; then
+                run_with_sudo pacman -S --noconfirm "${arch_missing[@]}"
             fi
         fi
     fi
@@ -355,13 +431,19 @@ detect_installed_programs() {
     if [[ ! -d "${prefix_path}/drive_c" ]]; then
         return 0
     fi
-    # Sucht ausführbare Dateien und schließt System-Utilities von Wine/Windows aus
+    # Sucht ausführbare Dateien; schließt Wine-Systempfade, Installer-Artefakte und Temp aus
     find "${prefix_path}/drive_c" -type f -name "*.exe" \
         ! -path "*/[wW]indows/*" \
         ! -path "*/[cC]ommon [fF]iles/*" \
-        ! -path "*/Common Files/*" \
+        ! -path "*/[aA]pp[dD]ata/[rR]oaming/[mM]icrosoft/[iI]nstaller/*" \
+        ! -path "*/[aA]pp[dD]ata/[lL]ocal/[tT]emp/*" \
+        ! -path "*/[aA]pp[dD]ata/[lL]ocal/[tT]emporary*" \
+        ! -path "*/{[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]*}/*" \
         ! -name "unins*.exe" \
         ! -name "[uU]ninstall*.exe" \
+        ! -name "[sS]etup*.exe" \
+        ! -name "[iI]nstall*.exe" \
+        ! -name "[rR]edist*.exe" \
         ! -name "wineboot.exe" \
         ! -name "winecfg.exe" \
         ! -name "control.exe" \
@@ -375,7 +457,7 @@ detect_installed_programs() {
 # --- Desktop-Verknüpfungen generieren ---
 generate_desktop_shortcut() {
     local prefix_name="$1"
-    local exe_path="$2"
+    local exe_path="$2"   # Linux absolute path OR Windows-style C:\... path
     local app_name="$3"
 
     local app_clean
@@ -390,9 +472,20 @@ generate_desktop_shortcut() {
         return 1
     fi
 
+    # Resolve prefix path from metadata to build a stable Windows-style path for the shortcut.
+    # Storing a Windows-style path (C:\...) makes the shortcut immune to prefix directory moves.
+    local prefix_path
+    prefix_path=$(jq -r --arg n "${prefix_name}" '.prefixes[$n].path // empty' "${METADATA_FILE}")
+
+    local stored_exe_path="${exe_path}"
+    if [[ -n "${prefix_path}" && "${exe_path}" == "${prefix_path}/drive_c/"* ]]; then
+        local rel="${exe_path#"${prefix_path}/drive_c/"}"
+        stored_exe_path="C:\\${rel//\//\\}"
+    fi
+
     log_info "Erstelle Desktop-Verknüpfung..."
     if [[ "${DRY_RUN}" == "true" ]]; then
-        log_info "[DRY] Erstelle ${shortcut_file}"
+        log_info "[DRY] Erstelle ${shortcut_file} (EXE: ${stored_exe_path})"
         return 0
     fi
 
@@ -402,7 +495,7 @@ generate_desktop_shortcut() {
 [Desktop Entry]
 Name=${app_name} (${prefix_name})
 Comment=Gestartet über Wine Manager
-Exec="${script_path}" run "${prefix_name}" "${exe_path}"
+Exec="${script_path}" run "${prefix_name}" "${stored_exe_path}"
 Icon=wine
 Terminal=false
 Type=Application
@@ -437,15 +530,23 @@ resolve_wine_binary() {
         echo ""
         return 0
     fi
-    if [[ -f "${path}/bin/wine" ]]; then
-        echo "${path}/bin/wine"
-    elif [[ -f "${path}/files/bin/wine" ]]; then
-        echo "${path}/files/bin/wine"
-    elif [[ -x "${path}" && ! -d "${path}" ]]; then
+    # Prefer wine64 for Proton/CachyOS builds, fall back to wine, then direct path
+    local candidate
+    for candidate in \
+        "${path}/bin/wine64" \
+        "${path}/bin/wine" \
+        "${path}/files/bin/wine64" \
+        "${path}/files/bin/wine"; do
+        if [[ -x "${candidate}" ]]; then
+            echo "${candidate}"
+            return 0
+        fi
+    done
+    if [[ -x "${path}" && ! -d "${path}" ]]; then
         echo "${path}"
-    else
-        echo ""
+        return 0
     fi
+    echo ""
 }
 
 resolve_wineserver_binary() {
@@ -454,13 +555,18 @@ resolve_wineserver_binary() {
         echo "/usr/bin/wineserver"
         return 0
     fi
-    if [[ -f "${wine_path}/bin/wineserver" ]]; then
-        echo "${wine_path}/bin/wineserver"
-    elif [[ -f "${wine_path}/files/bin/wineserver" ]]; then
-        echo "${wine_path}/files/bin/wineserver"
-    else
-        echo "/usr/bin/wineserver"
-    fi
+    local candidate
+    for candidate in \
+        "${wine_path}/bin/wineserver" \
+        "${wine_path}/files/bin/wineserver" \
+        "${wine_path}/bin/wineserver64" \
+        "${wine_path}/files/bin/wineserver64"; do
+        if [[ -x "${candidate}" ]]; then
+            echo "${candidate}"
+            return 0
+        fi
+    done
+    echo "/usr/bin/wineserver"
 }
 
 # --- Metadaten-Datenbankzugriffe ---
@@ -621,7 +727,12 @@ download_and_verify() {
     if [[ "${url}" == *.tar.xz || "${url}" == *.tar.zst || "${url}" == *.tar.gz ]]; then
         tar -xf "${temp_file}" -C "${target_dir}" --strip-components=1
     elif [[ "${url}" == *.zip ]]; then
-        unzip -q "${temp_file}" -d "${target_dir}"
+        if ! unzip -q "${temp_file}" -d "${target_dir}"; then
+            log_error "Entpacken des ZIP-Archivs fehlgeschlagen."
+            rm -f "${temp_file}"
+            rm -rf "${target_dir}"
+            return 1
+        fi
     fi
 
     rm -f "${temp_file}"
@@ -738,9 +849,24 @@ create_prefix() {
     export WINE="${wine_bin}"
     export WINESERVER
     WINESERVER=$(resolve_wineserver_binary "${wine_path}")
+    # Enable esync/fsync during prefix init for consistent environment
+    export WINEESYNC=1
+    export WINEFSYNC=1
 
     mkdir -p "${prefix_path}"
-    "${wine_bin}boot" -u
+    # Derive wineboot path: strip wine/wine64 suffix, append wineboot
+    # wine64 must be tried first since %wine would leave '64boot' on a wine64 binary
+    local wineboot_bin
+    if [[ "${wine_bin}" == *wine64 ]]; then
+        wineboot_bin="${wine_bin%wine64}wineboot"
+    else
+        wineboot_bin="${wine_bin%wine}wineboot"
+    fi
+    if [[ ! -x "${wineboot_bin}" ]]; then
+        log_error "wineboot nicht gefunden neben '${wine_bin}' (gesucht: '${wineboot_bin}')."
+        return 1
+    fi
+    "${wineboot_bin}" -u
 
     local esync=1
     local fsync=1
@@ -750,6 +876,9 @@ create_prefix() {
     log_info "Installiere Standard-Komponenten via Winetricks (corefonts, vcrun2019)..."
     winetricks -q corefonts vcrun2019 || log_warn "Einige Winetricks-Komponenten konnten nicht geladen werden."
 
+    # Always disable winemenubuilder.exe to prevent Wine from creating its own .desktop entries
+    "${wine_bin}" reg add 'HKCU\Software\Wine\DllOverrides' /v 'winemenubuilder.exe' /t REG_SZ /d '' /f
+
     if [[ "${type}" == "gaming" ]]; then
         log_info "Aktiviere Gaming-Optimierungen (DXVK, VKD3D)..."
         winetricks -q dxvk vkd3d || log_warn "DXVK/VKD3D Installation unvollständig."
@@ -757,9 +886,6 @@ create_prefix() {
         vkd3d=1
         "${wine_bin}" reg add 'HKCU\Software\Wine\DllOverrides' /v 'd3d11' /t REG_SZ /d 'native,builtin' /f
         "${wine_bin}" reg add 'HKCU\Software\Wine\DllOverrides' /v 'dxgi' /t REG_SZ /d 'native,builtin' /f
-    else
-        log_info "Deaktiviere ungenutzte Desktopintegrationen..."
-        "${wine_bin}" reg add 'HKCU\Software\Wine\DllOverrides' /v 'winemenubuilder.exe' /t REG_SZ /d '' /f
     fi
 
     local metadata
@@ -788,11 +914,6 @@ run_exe_in_prefix() {
     fi
     shift 2 || shift $#
 
-    if [[ ! -f "${exe_path}" ]]; then
-        log_error "Ausführbare Datei '${exe_path}' existiert nicht."
-        return 1
-    fi
-
     local metadata
     metadata=$(jq -r --arg n "${name}" '.prefixes[$n] // empty' "${METADATA_FILE}")
     if [[ -z "${metadata}" ]]; then
@@ -800,17 +921,27 @@ run_exe_in_prefix() {
         return 1
     fi
 
-    local p_path
-    local p_ver
-    local p_esync
-    local p_fsync
-    local p_arch
+    local p_path p_ver p_esync p_fsync p_arch
+    # Parse all needed fields in a single jq call
+    local _parsed
+    _parsed=$(echo "${metadata}" | jq -r '[.path, .wine_version, (.esync | tostring), (.fsync | tostring), (.arch // "win64")] | join("\t")')
+    IFS=$'\t' read -r p_path p_ver p_esync p_fsync p_arch <<< "${_parsed}"
 
-    p_path=$(echo "${metadata}" | jq -r '.path')
-    p_ver=$(echo "${metadata}" | jq -r '.wine_version')
-    p_esync=$(echo "${metadata}" | jq -r '.esync')
-    p_fsync=$(echo "${metadata}" | jq -r '.fsync')
-    p_arch=$(echo "${metadata}" | jq -r '.arch // "win64"')
+    # Resolve absolute Linux path: accept both Linux paths and Windows-style C:\ paths
+    local resolved_exe="${exe_path}"
+    if [[ "${exe_path}" == C:\\* || "${exe_path}" == c:\\* ]]; then
+        # Convert Windows path (C:\foo\bar.exe) to Linux path within prefix
+        local win_rel="${exe_path:3}"          # strip "C:\"
+        win_rel="${win_rel//\\//}"             # backslash -> slash
+        resolved_exe="${p_path}/drive_c/${win_rel}"
+    fi
+
+    if [[ ! -f "${resolved_exe}" ]]; then
+        log_error "EXE nicht gefunden: '${resolved_exe}'"
+        log_error "Prefix-Pfad (Metadata): '${p_path}'"
+        log_error "Prüfe ob der Prefix unter '${DEFAULT_PREFIX_DIR}/${name}' liegt und die Metadata aktuell ist."
+        return 1
+    fi
 
     local wine_path
     wine_path=$(resolve_wine_path "${p_ver}")
@@ -822,24 +953,49 @@ run_exe_in_prefix() {
         return 1
     fi
 
-    log_info "Starte '${exe_path}' in Prefix '${name}'..."
+    # Build Windows-style path for wine (more reliable than Linux path for games in drive_c)
+    local win_exe_path="${resolved_exe}"
+    if [[ "${resolved_exe}" == "${p_path}/drive_c/"* ]]; then
+        local rel="${resolved_exe#"${p_path}/drive_c/"}"
+        win_exe_path="C:\\${rel//\//\\}"
+    fi
+
+    log_info "Starte '${win_exe_path}' in Prefix '${name}' [Wine: ${p_ver}]..."
 
     export WINEPREFIX="${p_path}"
     export WINEARCH="${p_arch}"
-    export WINEESYNC="${p_esync}"
-    export WINEFSYNC="${p_fsync}"
     export WINEDEBUG=-all
     export WINESERVER
     WINESERVER=$(resolve_wineserver_binary "${wine_path}")
 
+    # Only set WINEESYNC/WINEFSYNC when enabled; setting =0 is ignored by some Wine builds
+    if [[ "${p_esync}" == "1" ]]; then
+        export WINEESYNC=1
+    else
+        unset WINEESYNC
+    fi
+    if [[ "${p_fsync}" == "1" ]]; then
+        export WINEFSYNC=1
+    else
+        unset WINEFSYNC
+    fi
+
     if [[ "${DRY_RUN}" == "true" ]]; then
-        log_info "[DRY] WINEPREFIX=${p_path} WINEARCH=${p_arch} WINEESYNC=${p_esync} WINEFSYNC=${p_fsync} ${wine_bin} '${exe_path}'"
+        log_info "[DRY] WINEPREFIX=${p_path} WINEARCH=${p_arch} WINEESYNC=${p_esync} WINEFSYNC=${p_fsync} ${wine_bin} '${win_exe_path}'"
         return 0
     fi
 
-    "${wine_bin}" "${exe_path}" "$@" &
-    local pid=$!
-    log_info "Prozess im Hintergrund gestartet (PID: ${pid})."
+    log_verbose "Starte Prozess im Vordergrund..."
+    # Run wine in foreground so the caller can wait and capture the exit code.
+    # The & background variant is intentionally removed - TUI callers handle the wait prompt.
+    local wine_exit=0
+    "${wine_bin}" "${win_exe_path}" "$@" || wine_exit=$?
+    if (( wine_exit == 0 )); then
+        log_info "Prozess beendet (Exit: 0)."
+    else
+        log_warn "Prozess beendet mit Exit-Code ${wine_exit}."
+    fi
+    return "${wine_exit}"
 }
 
 kill_prefix_processes() {
@@ -856,10 +1012,10 @@ kill_prefix_processes() {
         return 1
     fi
 
-    local p_path
-    p_path=$(echo "${metadata}" | jq -r '.path')
-    local p_ver
-    p_ver=$(echo "${metadata}" | jq -r '.wine_version')
+    local p_path p_ver
+    local _parsed
+    _parsed=$(echo "${metadata}" | jq -r '[.path, .wine_version] | join("\t")')
+    IFS=$'\t' read -r p_path p_ver <<< "${_parsed}"
 
     local wine_path
     wine_path=$(resolve_wine_path "${p_ver}")
@@ -1077,13 +1233,13 @@ menu_download_scrollable() {
         return 0
     fi
 
-    local target_tag_asset="${tags[selected_idx]}"
     local target_url="${urls[selected_idx]}"
     local target_checksums="${checksums_list[selected_idx]}"
     local target_asset_name="${asset_names[selected_idx]}"
 
     local best_checksum=""
     if [[ -n "${target_checksums}" ]]; then
+        local cs_array=()
         IFS=',' read -r -a cs_array <<< "${target_checksums}"
         for cs in "${cs_array[@]}"; do
             if [[ "${cs}" == *"${target_asset_name}"* ]]; then
@@ -1191,7 +1347,10 @@ menu_prefixes() {
 
             local active="inaktiv"
             if command -v pgrep &>/dev/null; then
-                for pid in $(pgrep -u "$(id -u)" -x wineserver 2>/dev/null || true); do
+                local wineserver_pids=()
+                mapfile -t wineserver_pids < <(pgrep -u "$(id -u)" -x wineserver 2>/dev/null || true)
+                local pid
+                for pid in "${wineserver_pids[@]}"; do
                     if [[ -r "/proc/${pid}/environ" ]]; then
                         if tr '\0' '\n' < "/proc/${pid}/environ" 2>/dev/null | grep -qx "WINEPREFIX=${path}"; then
                             active="${COLOR_GREEN}AKTIV${COLOR_RESET}"
@@ -1259,7 +1418,8 @@ menu_create_prefix() {
     [[ "${type_opt}" == "2" ]] && selected_type="program"
 
     read -e -rp "Optional: Pfad zur EXE zur automatischen Architekturbestimmung: " -i "${HOME}/" p_exe_detect
-    local actual_exe=""
+    local actual_exe
+    actual_exe=""
     if [[ -n "${p_exe_detect}" && -f "${p_exe_detect}" ]]; then
         actual_exe="${p_exe_detect}"
     fi
@@ -1320,7 +1480,8 @@ menu_launch_detected_programs() {
         case "${opt}" in
             1)
                 run_exe_in_prefix "${name}" "${exe_to_run}"
-                sleep 2
+                echo ""
+                read -rp "Programm beendet. Beliebige Taste drücken..." < /dev/tty
                 break
                 ;;
             2)
@@ -1356,14 +1517,9 @@ menu_manage_single_prefix() {
         local dxvk
         local vkd3d
 
-        path=$(echo "${metadata}" | jq -r '.path')
-        ver=$(echo "${metadata}" | jq -r '.wine_version')
-        type=$(echo "${metadata}" | jq -r '.type')
-        arch=$(echo "${metadata}" | jq -r '.arch // "win64"')
-        esync=$(echo "${metadata}" | jq -r '.esync')
-        fsync=$(echo "${metadata}" | jq -r '.fsync')
-        dxvk=$(echo "${metadata}" | jq -r '.dxvk')
-        vkd3d=$(echo "${metadata}" | jq -r '.vkd3d')
+        local _parsed
+        _parsed=$(echo "${metadata}" | jq -r '[.path, .wine_version, .type, (.arch // "win64"), (.esync|tostring), (.fsync|tostring), (.dxvk|tostring), (.vkd3d|tostring)] | join("\t")')
+        IFS=$'\t' read -r path ver type arch esync fsync dxvk vkd3d <<< "${_parsed}"
 
         echo "${COLOR_CYAN}===============================================${COLOR_RESET}"
         echo "   Prefix verwalten: ${COLOR_GREEN}${name}${COLOR_RESET}"
@@ -1393,16 +1549,23 @@ menu_manage_single_prefix() {
             2)
                 read -e -rp "Pfad zur EXE/MSI-Datei: " -i "${HOME}/" target_exe
                 run_exe_in_prefix "${name}" "${target_exe}"
-                sleep 2
+                echo ""
+                read -rp "Programm beendet. Beliebige Taste drücken..." < /dev/tty
                 ;;
             3)
                 log_info "Starte Winetricks..."
                 export WINEPREFIX="${path}"
+                export WINEDEBUG=-all
                 local wine_path
                 wine_path=$(resolve_wine_path "${ver}")
-                export WINE=$(resolve_wine_binary "${wine_path}")
+                local wine_bin
+                wine_bin=$(resolve_wine_binary "${wine_path}")
+                export WINE="${wine_bin}"
                 export WINESERVER
                 WINESERVER=$(resolve_wineserver_binary "${wine_path}")
+                # Mirror esync/fsync state from prefix metadata
+                if [[ "${esync}" == "1" ]]; then export WINEESYNC=1; else unset WINEESYNC; fi
+                if [[ "${fsync}" == "1" ]]; then export WINEFSYNC=1; else unset WINEFSYNC; fi
                 winetricks || log_warn "Winetricks beendet."
                 ;;
             4)
@@ -1436,34 +1599,31 @@ menu_prefix_settings() {
         echo ""
         read -rp "Auswahl [1-6]: " opt
 
-        local metadata
-        metadata=$(jq -r --arg n "${name}" '.prefixes[$n]' "${METADATA_FILE}")
-
         case "${opt}" in
             1)
                 local cur
-                cur=$(echo "${metadata}" | jq -r '.esync')
+                cur=$(jq -r --arg n "${name}" '.prefixes[$n].esync' "${METADATA_FILE}")
                 local val=$((1 - cur))
                 configure_prefix "${name}" "esync" "${val}"
                 sleep 1
                 ;;
             2)
                 local cur
-                cur=$(echo "${metadata}" | jq -r '.fsync')
+                cur=$(jq -r --arg n "${name}" '.prefixes[$n].fsync' "${METADATA_FILE}")
                 local val=$((1 - cur))
                 configure_prefix "${name}" "fsync" "${val}"
                 sleep 1
                 ;;
             3)
                 local cur
-                cur=$(echo "${metadata}" | jq -r '.dxvk')
+                cur=$(jq -r --arg n "${name}" '.prefixes[$n].dxvk' "${METADATA_FILE}")
                 local val=$((1 - cur))
                 configure_prefix "${name}" "dxvk" "${val}"
                 sleep 1
                 ;;
             4)
                 local cur
-                cur=$(echo "${metadata}" | jq -r '.vkd3d')
+                cur=$(jq -r --arg n "${name}" '.prefixes[$n].vkd3d' "${METADATA_FILE}")
                 local val=$((1 - cur))
                 configure_prefix "${name}" "vkd3d" "${val}"
                 sleep 1
@@ -1579,7 +1739,8 @@ backup_prefix() {
         return 1
     fi
     local prefix_path="${DEFAULT_PREFIX_DIR}/${name}"
-    local backup_file="${DEFAULT_PREFIX_DIR}/${name}_backup_$(date +%Y%m%d_%H%M%S).tar.gz"
+    local backup_file
+    backup_file="${DEFAULT_PREFIX_DIR}/${name}_backup_$(date +%Y%m%d_%H%M%S).tar.gz"
 
     if [[ ! -d "${prefix_path}" ]]; then
         log_error "Prefix '${name}' existiert nicht."
@@ -1782,7 +1943,7 @@ main() {
             kill_prefix_processes "$1"
             ;;
         register-wine)
-            [[ -z "${1:-}" ]] || [[ -z "${2:-}" ]] && { log_error "Name und Pfad benötigt."; exit 1; }
+            { [[ -z "${1:-}" ]] || [[ -z "${2:-}" ]]; } && { log_error "Name und Pfad benötigt."; exit 1; }
             register_custom_wine_metadata "$1" "$2"
             ;;
         backup-prefix)
@@ -1790,7 +1951,7 @@ main() {
             backup_prefix "$1"
             ;;
         restore-prefix)
-            [[ -z "${1:-}" ]] || [[ -z "${2:-}" ]] && { log_error "Prefix-Name und Backup-Pfad benötigt."; exit 1; }
+            { [[ -z "${1:-}" ]] || [[ -z "${2:-}" ]]; } && { log_error "Prefix-Name und Backup-Pfad benötigt."; exit 1; }
             restore_prefix "$1" "$2"
             ;;
         *)
